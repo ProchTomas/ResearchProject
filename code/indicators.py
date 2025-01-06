@@ -8,7 +8,7 @@ def sma(t, data, period):
         data: data array
         period: the period for moving average
     Returns:
-        simple moving average
+        tuple of simple moving averages
     """
     ma = 0
     for i in range(period):
@@ -16,30 +16,41 @@ def sma(t, data, period):
     return ma / period
     
     
-def rsi(t, data):
+def rsi(t, data, period):
     """
     Args:
         t: current time step
         data: data array
     Returns:
-        custom rsi
+        tuple of the custom transformation of the RSI indicator from range [0, 1]
     """
-    avg_gain, avg_loss, num_g, num_l = 0
+    num_vars = len(data[t])
     
-    for i in range(21):
-        if data[t-i] >= 0:
-            avg_gain += data[t-i]
-            num_g += 1
+    rsi_values = []
+    
+    for j in range(num_vars):
+        avg_gain = 0
+        avg_loss = 0
+        num_g = 0
+        num_l = 0
+        
+        for i in range(period):
+            if data[t-i][j] >= 0:
+                avg_gain += data[t-i][j]
+                num_g += 1
+            else:
+                avg_loss += abs(data[t-i][j])
+                num_l += 1
+        if avg_loss == 0:
+            rsi_values.append(1)
+        elif avg_gain == 0:
+            rsi_values.append(0)
         else:
-            avg_loss += abs(data[t-i])
-            num_l += 1
-    if avg_loss == 0:
-        return 1
-    if avg_gain == 0:
-        return 0
-    
-    rsi = 100 - 100 / (1 + (avg_gain/num_g) / (avg_loss/num_l)) # classic RSI
-    return 1 / (1 + np.exp(0.4 * (rsi - 30))) + 1 / (1 + np.exp(0.4 * (rsi - 70))) - 1 # returns the custom transformation of the RSI indicator from range [0, 1]
+            rsi = 100 - 100 / (1 + (avg_gain/num_g) / (avg_loss/num_l)) # classic RSI
+            rsi = 1 / (1 + np.exp(0.4 * (rsi - 30))) + 1 / (1 + np.exp(0.4 * (rsi - 70))) - 1
+            rsi_values.append(rsi)
+        
+    return np.array(rsi_values)
 
 
 def mae(data_point, ma_exponential, period):
@@ -49,7 +60,7 @@ def mae(data_point, ma_exponential, period):
         ma_exponential: previous mae value
         period: the period for moving average
     Returns:
-        moving average exponential
+        tuple of exponential moving averages
     """
     alpha = 2 / (period + 1)
     return alpha * data_point + (1 - alpha) * ma_exponential # returns moving average exponential

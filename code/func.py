@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from scipy.special import gammaln
 
 
 def orthogonal_transformation(A):
@@ -72,14 +73,40 @@ def refill(l, data, phi):
 
 
 def getL_z(matrix, x, y): # returns L_z
+    """
+    Args:
+        matrix: L
+        x: dimension of data - nu
+        y: dimension of regressor - rho
+
+    Returns:
+        matrix Lz
+    """
     return matrix[x:x+y, x:x+y]
 
 
-def getL_f(matrix, x): # returns L_f
+def getL_f(matrix, x):
+    """
+    Args:
+        matrix: L
+        x: dimension of data - nu
+        
+    Returns:
+        matrix Lf
+    """
     return matrix[:x, :x]
 
 
-def getL_zf(matrix, x, y): # returns L_zf
+def getL_zf(matrix, x, y):
+    """
+    Args:
+        matrix: L
+        x: dimension of data - nu
+        y: dimension of regressor - rho
+        
+    Returns:
+        matrix L_zf
+    """
     return matrix[x:x+y, :x]
 
 
@@ -87,15 +114,92 @@ def update_V(v, data):
     return v + np.outer(data, data)
 
 
-def get_det_Vzk(K): # returns determinant of V_z,k^-1 as product of diagonal elements of K = L_z,k^-1
-    s = 1
-    for j in range(len(K)):
-        s *= K[j][j]
-    return np.power(s, 2)
+def get_det_Lzk(Lz, E, mu):
+    """
+    Args:
+        Lz: matrix
+        E: permutation matrix
+        mu: dimension of reduced regressor
+        
+    Returns:
+        determinant of L_z,k
+    """
+    Lzk = orthogonal_transformation(E @ np.linalg.inv(Lz)) # apply the householder transformation
+    
+    det = 1
+    for j in range(mu):
+        det *= Lzk[j][j]
+    return 1 / det # det L_z,k = 1 / det L_z,k^-1
 
 
-def get_det_Lambda(Lf): # returns determinant of Lambda^-1
-    d = 1
+def get_det_Lf(Lf):
+    """
+    Args:
+        Lf
+        
+    Returns:
+        determinant of Lf
+    """
+    det = 1
     for j in range(len(Lf)):
-        d *= Lf[j][j]
-    return np.power(d, -2)
+        det *= Lf[j][j]
+    return det
+
+# TODO check the functionality
+def get_likelihood(L_init, L, E, x, y, z, t):
+    """
+    Args:
+        L_init: initial matrix L
+        L: matrix L
+        E: permutation matrix
+        x: dimension of data - nu
+        y: dimension of regressor - rho
+        z: dimension of reduced regressor - mu
+        t: time - delta t
+        
+    Returns:
+        likelihood value
+    """
+    Lz = getL_z(L, x, y)
+    Lf = getL_f(L, x)
+    
+    Lz_init = getL_z(L_init, x, y)
+    Lf_init = getL_f(L_init, x)
+    
+    det_Lzk_init = get_det_Lzk(Lz_init, E, z)
+    det_Lf_init = get_det_Lf(Lf_init)
+    
+    det_Lzk = get_det_Lzk(Lz, E, z)
+    det_Lf = get_det_Lf(Lf)
+    
+    delta_0 = 10 + y
+    delta_t = delta_0 + t
+    
+    likelihood = 0
+    
+    for j in range(x):
+        likelihood += gammaln((delta_t - z + x + 2 - j) / 2) - gammaln((delta_0 - z + x + 1 - j) / 2)
+    likelihood += x * (np.log(det_Lzk) - np.log(det_Lzk_init)) + (delta_t - z + x + 2) * np.log(det_Lf) - (delta_0 - z + x + 1) * np.log(det_Lf_init)
+    
+    return likelihood
+
+
+# TODO structure estimation algorithm
+
+def generate_permutations(matrix, index, result): # generator of matrices E_k
+    if index == len(matrix):
+        if len(matrix) > 0: # excludes the empty matrix
+            result.append(matrix.copy())
+        return
+
+    generate_permutations(matrix, index + 1, result)
+
+    matrix = np.delete(matrix, index, axis=0)
+    generate_permutations(matrix, index, result)
+
+
+def generate_identity_permutations(n):
+    identity_matrix = np.eye(n)
+    permutations = []
+    generate_permutations(identity_matrix, 0, permutations)
+    return permutations

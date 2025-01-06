@@ -4,7 +4,7 @@ import scipy.stats as stats
 
 
 def reward(actions, data, costs):
-    """
+    """ Custom reward function
     Args:
         actions: actions array
         data: data array
@@ -21,7 +21,7 @@ def reward(actions, data, costs):
             transaction_costs += costs * np.abs(actions[i][j] - actions[i-1][j])
         utility += np.log(1 + data[i].T @ actions[i]) + np.log(1 - transaction_costs)
         r.append(np.exp(utility))
-    return r
+    return np.array(r)
 
 
 def plot_reward(actions, data, costs):
@@ -33,10 +33,11 @@ def plot_reward(actions, data, costs):
         data: data array
         costs: transaction costs
     """
-    # TODO Plot gained reward against different strategies and benchmark
-    rewards = reward(actions, data, costs)
-    time = np.arange(rewards)
+    # TODO Plot gained reward against different strategies and benchmark and color them
     
+    rewards = reward(actions, data, costs)
+    time = np.arange(len(rewards))
+    print(time)
     plt.plot(time, rewards, label=f'cumulative gain', marker='o')
     plt.title('Returns')
     plt.xlabel('Time')
@@ -55,18 +56,16 @@ def residual_plots(predictions, residuals):
         residuals: array of residuals for the assets
     """
     num_vars = residuals.shape[1]
-    fig, axes = plt.subplots(1, num_vars, figsize=(6 * num_vars, 4), sharey=True)
     
     for i in range(num_vars):
-        ax = axes[i] if num_vars > 1 else axes  # Handle single subplot case
-        ax.scatter(predictions[:, i], residuals[:, i], alpha=0.7)
-        ax.axhline(0, color='orange', linestyle='--', linewidth=1)  # Add a reference line at 0
-        ax.set_title(f'Dependent variable {i + 1} residual plot')
-        ax.set_xlabel('Predicted Values')
-        ax.set_ylabel('Residuals')
-    
-    plt.tight_layout()
-    plt.show()
+        plt.figure()
+        plt.scatter(predictions[:, i], residuals[:, i])
+        plt.xlabel(f'Predicted values (Dimension {i + 1})')
+        plt.ylabel(f'Residuals (Dimension {i + 1})')
+        plt.title(f'Residuals vs Predicted (Dimension {i + 1})')
+        plt.yscale('log') # log scale if some residual values are too big
+        plt.grid(True, which='both', linestyle='--', linewidth=0.5)
+        plt.show()
 
 
 def qq_plots(residuals):
@@ -77,16 +76,12 @@ def qq_plots(residuals):
     """
     num_vars = residuals.shape[1]
 
-    # Create subplots for each dependent variable
-    fig, axes = plt.subplots(1, num_vars, figsize=(6 * num_vars, 4))
-
     for i in range(num_vars):
-        ax = axes[i] if num_vars > 1 else axes  # Handle single subplot case
-        stats.probplot(residuals[:, i], dist="norm", plot=ax)
-        ax.set_title(f'Dependent variable {i + 1} QQ plot')
-
-    plt.tight_layout()
-    plt.show()
+        plt.figure()
+        stats.probplot(residuals[:, i], dist="norm", plot=plt)
+        plt.title(f'Q-Q Plot (Dimension {i + 1})')
+        plt.grid(True, linestyle="--", linewidth=0.5)
+        plt.show()
     
 
 def residuals_time_plots(residuals):
@@ -108,4 +103,36 @@ def residuals_time_plots(residuals):
     plt.xlabel('Time')
     plt.ylabel('Residual Norm')
     plt.show()
+    
+# TODO add list of the particular assets, overall MSE
+def performance_metrics(residuals):
+    """metrics: Durbin-Watson, MSE, MAE, R2
+
+    Args:
+        residuals: array of residuals
+    """
+    num_vars = residuals.shape[1]
+    n = len(residuals)
+    
+    for i in range(num_vars):
+        mse = 0
+        mae = 0
+        dw1 = 0
+        dw2 = 0
+        
+        for j in range(n):
+            mse += np.power(residuals[j][i], 2)
+            mae += np.abs(residuals[j][i])
+            if 0 < j:
+                dw1 += np.power(residuals[j-1][i] - residuals[j][i], 2)
+            dw2 += np.power(residuals[j][i], 2)
+            
+        mse /= n
+        mae /= n
+        
+        print(f"MSE for asset {i}: {mse}")
+        print(f"MAE for asset {i}: {mae}")
+        print(f"D-W for assets {i}: {dw1 / dw2}")
+        print("--------------------------------")
+    
         
