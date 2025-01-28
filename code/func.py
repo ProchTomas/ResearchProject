@@ -7,7 +7,7 @@ def orthogonal_transformation(A):
     # FOR LOWER TRIANGULAR MATRICES
     n = A.shape[0]
     m = A.shape[1]
-    for c in range(min(n, m)):
+    for c in range(min(m, n)):
         # Create the Householder vector
         u = np.zeros(n)
         u[c:] = A[c:, c]
@@ -26,9 +26,13 @@ def orthogonal_transformation(A):
 
         # Zero out the elements above the diagonal
         # in column c
-        A[:c, c] = 0
+        A[:c, c:] = 0
+
+    # Zero out the rest
+    A[n-1, c+1:] = 0
+
     # Return the lower triangular matrix
-    return np.transpose(A)
+    return A
 
 
 # Intermediate functions f and g
@@ -114,21 +118,19 @@ def update_V(v, data):
     return v + np.outer(data, data)
 
 
-def get_det_Lzk(Lz, E, mu):
+def get_det_Lz(Lz, mu):
     """
     Args:
         Lz: matrix
-        E: permutation matrix
         mu: dimension of reduced regressor
         
     Returns:
         determinant of L_z,k
     """
-    Lzk = orthogonal_transformation(E @ np.linalg.inv(Lz)) # apply the householder transformation
     
     det = 1
     for j in range(mu):
-        det *= Lzk[j][j]
+        det *= Lz[j][j]
     return 1 / det # det L_z,k = 1 / det L_z,k^-1
 
 
@@ -146,30 +148,28 @@ def get_det_Lf(Lf):
     return det
 
 # TODO check the functionality
-def get_likelihood(L_init, L, E, x, y, z, t):
+def get_likelihood(L_init, L, Lzk, x, y, z, t):
     """
     Args:
         L_init: initial matrix L
         L: matrix L
-        E: permutation matrix
+        Lzk: matrix Lz for the reduced model
         x: dimension of data - nu
         y: dimension of regressor - rho
         z: dimension of reduced regressor - mu
-        t: time - delta t
-        
+        t: time ... delta_t
     Returns:
         likelihood value
     """
-    Lz = getL_z(L, x, y)
     Lf = getL_f(L, x)
     
     Lz_init = getL_z(L_init, x, y)
     Lf_init = getL_f(L_init, x)
     
-    det_Lzk_init = get_det_Lzk(Lz_init, E, z)
+    det_Lzk_init = get_det_Lz(Lz_init, z)
     det_Lf_init = get_det_Lf(Lf_init)
     
-    det_Lzk = get_det_Lzk(Lz, E, z)
+    det_Lzk = get_det_Lz(Lzk, z)
     det_Lf = get_det_Lf(Lf)
     
     delta_0 = 10 + y
@@ -186,20 +186,59 @@ def get_likelihood(L_init, L, E, x, y, z, t):
 
 # TODO structure estimation algorithm
 
-def generate_permutations(matrix, index, result): # generator of matrices E_k
-    if index == len(matrix):
-        if len(matrix) > 0: # excludes the empty matrix
-            result.append(matrix.copy())
-        return
+def reduce_matrix(m, i, k, j):
+    """
+    Removes k rows below i-th row and j rows above i-th row, but keeps the i-th row.
+    :param m: Input matrix (NumPy array).
+    :param i: Row index for reference (0-based).
+    :param k: Number of rows to remove below i-th row.
+    :param j: Number of rows to remove above i-th row.
+    :return: Reduced matrix as a NumPy array.
+    """
+    if i - j < 0 or i + k >= m.shape[0]:
+        raise ValueError("Invalid i, k, or j values. Indices out of bounds.")
 
-    generate_permutations(matrix, index + 1, result)
+    # Indices to keep: rows outside the range (i - j, i) and (i + 1, i + k + 1), plus i-th row
+    rows_to_keep = list(range(0, i - j)) + [i] + list(range(i + k + 1, m.shape[0]))
+    reduced_matrix = m[rows_to_keep, :]
 
-    matrix = np.delete(matrix, index, axis=0)
-    generate_permutations(matrix, index, result)
+    return reduced_matrix
 
 
-def generate_identity_permutations(n):
-    identity_matrix = np.eye(n)
-    permutations = []
-    generate_permutations(identity_matrix, 0, permutations)
-    return permutations
+def structure_estimation(L_init, L, x, y, t):
+    """Algorithm for approximating the optimal structure for regression
+    Args:
+        L_init: initial matrix L
+        L: matrix L
+        x: dimension of data - nu
+        y: dimension of regressor - rho
+        t: time - delta t
+    """
+    
+    # OUTLINE
+    # take the full matrix L and select a starting point (random method)
+    # remove one regressor at a time and compare the likelihoods, select the structure that maximizes likelihood
+    # remove one regressor from the neighbourhood and compare the likelihoods
+    # repeat the process until removing regressors provides no benefits - local maxima
+    
+    likelihood_full = get_likelihood(L_init, L, x, y, y, t) # likelihood for the full statistics V
+    
+    starting_index = np.random.randint(y) # starting index
+    
+    Lk = reduce_matrix(L, x + starting_index, )
+
+
+# Generate a lower triangular matrix for testing.
+n = 6  # Size of the square matrix
+lower_triangular_matrix = np.tril(np.random.rand(n, n).astype(np.float64))
+print("Original Lower Triangular Matrix:")
+print(lower_triangular_matrix)
+
+# Test the reduce_matrix function.
+i, k, j = 3, 1, 2  # Example parameters
+reduced_matrix = reduce_matrix(lower_triangular_matrix, i, k, j)
+print("\nReduced Matrix:")
+print(reduced_matrix)
+
+new_mat = orthogonal_transformation(reduced_matrix)
+print(np.round(new_mat, 2))
