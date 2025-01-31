@@ -118,7 +118,7 @@ def update_V(v, data):
     return v + np.outer(data, data)
 
 
-def get_det_Lz(Lz, mu):
+def get_det_Lz(Lz):
     """
     Args:
         Lz: matrix
@@ -129,9 +129,9 @@ def get_det_Lz(Lz, mu):
     """
     
     det = 1
-    for j in range(mu):
+    for j in range(len(Lz)):
         det *= Lz[j][j]
-    return 1 / det # det L_z,k = 1 / det L_z,k^-1
+    return det
 
 
 def get_det_Lf(Lf):
@@ -147,98 +147,178 @@ def get_det_Lf(Lf):
         det *= Lf[j][j]
     return det
 
+
+def get_det_Vzk(Lzk):
+    det_Lzk = get_det_Lz(Lzk)
+    det_Vzk = np.power(det_Lzk, -2)
+    return det_Vzk
+
+
+def get_det_Lambda(Lf):
+    det_Lf = get_det_Lf(Lf)
+    det_Lambda = np.power(det_Lf, -2)
+    return det_Lambda
+
+
 # TODO check the functionality
-def get_likelihood(L_init, L, Lzk, x, y, z, t):
+def get_likelihood(det_Vzk_init, det_Lambda_init, det_Vzk, det_Lambda, x, z, t):
     """
     Args:
-        L_init: initial matrix L
-        L: matrix L
-        Lzk: matrix Lz for the reduced model
+        det_Vzk_init: determinant of initial Vzk
+        det_Lambda_init: determinant of initial Lambda
+        det_Vzk: determinant of current Vzk (|Vzk| = |Lzk|^-2)
+        det_Lambda: determinant of current Lambda (|Lambda| = |Lf|^-2)
         x: dimension of data - nu
-        y: dimension of regressor - rho
-        z: dimension of reduced regressor - mu
-        t: time ... delta_t
+        z: dimension of reduced regressor - mu (= y, for the full model)
+        t: time
     Returns:
         likelihood value
     """
-    Lf = getL_f(L, x)
     
-    Lz_init = getL_z(L_init, x, y)
-    Lf_init = getL_f(L_init, x)
-    
-    det_Lzk_init = get_det_Lz(Lz_init, z)
-    det_Lf_init = get_det_Lf(Lf_init)
-    
-    det_Lzk = get_det_Lz(Lzk, z)
-    det_Lf = get_det_Lf(Lf)
-    
-    delta_0 = 10 + y
+    delta_0 = 10 + z
     delta_t = delta_0 + t
     
     likelihood = 0
     
+    # It is important to count with the initial determinants and det_Lambda, though they remain the same. This is because of the different scaling at each step
+    # This could perhaps be optimized by precomputing the differences for det_Lambda
     for j in range(x):
         likelihood += gammaln((delta_t - z + x + 2 - j) / 2) - gammaln((delta_0 - z + x + 1 - j) / 2)
-    likelihood += x * (np.log(det_Lzk) - np.log(det_Lzk_init)) + (delta_t - z + x + 2) * np.log(det_Lf) - (delta_0 - z + x + 1) * np.log(det_Lf_init)
+    likelihood += x / 2 * (np.log(det_Vzk) - np.log(det_Vzk_init)) - (delta_t - z + x + 2) / 2 * np.log(det_Lambda) + (delta_0 - z + x + 1) / 2 * np.log(det_Lambda_init)
     
     return likelihood
 
 
-# TODO structure estimation algorithm
-
-def reduce_matrix(m, i, k, j):
-    """
-    Removes k rows below i-th row and j rows above i-th row, but keeps the i-th row.
-    :param m: Input matrix (NumPy array).
-    :param i: Row index for reference (0-based).
-    :param k: Number of rows to remove below i-th row.
-    :param j: Number of rows to remove above i-th row.
-    :return: Reduced matrix as a NumPy array.
-    """
-    if i - j < 0 or i + k >= m.shape[0]:
-        raise ValueError("Invalid i, k, or j values. Indices out of bounds.")
-
-    # Indices to keep: rows outside the range (i - j, i) and (i + 1, i + k + 1), plus i-th row
-    rows_to_keep = list(range(0, i - j)) + [i] + list(range(i + k + 1, m.shape[0]))
-    reduced_matrix = m[rows_to_keep, :]
-
+def reduce_matrix(matrix, mask): # Selects which rows to keep (which regressors to keep) based on the parent vector (here called masking)
+    rows_to_keep = np.where(mask)[0]
+    reduced_matrix = matrix[rows_to_keep, :]
     return reduced_matrix
 
 
-def structure_estimation(L_init, L, x, y, t):
-    """Algorithm for approximating the optimal structure for regression
+def mutate(regressor, p_mut):
+    mutated = regressor.copy()
+    for i in range(len(mutated)):
+        if np.random.rand() < p_mut:
+            mutated[i] = 1 - mutated[i] # Flips the bit with probability p_mut
+    return mutated 
+
+
+def crossover(parent1, parent2):
+    crossover_point = np.random.randint(1, len(parent1)-1)
+    return np.concatenate((parent1[:crossover_point], parent2[crossover_point:])) # Returns an offspring of two parents
+    
+    
+def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
+    """
+    Algorithm for approximating the optimal structure for regression
+    A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure
     Args:
         L_init: initial matrix L
         L: matrix L
         x: dimension of data - nu
         y: dimension of regressor - rho
         t: time - delta t
+        p_mut: probability of mutation
+        max_iter: maximum number of iterations in this algorithm
+    Returns: parent and the highest likelihood value achieved
     """
     
-    # OUTLINE
-    # take the full matrix L and select a starting point (random method)
-    # remove one regressor at a time and compare the likelihoods, select the structure that maximizes likelihood
-    # remove one regressor from the neighbourhood and compare the likelihoods
-    # repeat the process until removing regressors provides no benefits - local maxima
+    print(f"Running structure estimation, p_mut = {p_mut}, max_iter = {max_iter}, size of searched space: {2**y}")
     
-    likelihood_full = get_likelihood(L_init, L, x, y, y, t) # likelihood for the full statistics V
+    # Initialize the matrices and their determinants for the initial state
+    # They are calculated here so that they don't have to be recalculated at each iteration
+    Lf_init = getL_f(L_init, x)
+    det_Lf_init = get_det_Lf(Lf_init)
+    Lz_init = getL_z(L_init, x, y)
+    det_Lz_init = get_det_Lz(Lz_init)
     
-    starting_index = np.random.randint(y) # starting index
+    # These will also play a role in each calculation
+    det_Lambda_init = np.power(det_Lf_init, -2)
+    det_Vz_init = np.power(det_Lz_init, -2)
     
-    Lk = reduce_matrix(L, x + starting_index, )
+    # Get the submatrices of L and their determinants
+    Lz = getL_z(L, x, y)
+    Lf = getL_f(L, x)
+    
+    det_Vz = get_det_Vzk(Lz)
+    det_Lambda = get_det_Lambda(Lf) # This is going to be the same for all model versions
+    
+    # STEP 1: Initialize parent and its likelihood
+    
+    parent = np.ones(y) # Initialize the parent, corresponding to the full model
+    
+    Likelihood_max = get_likelihood(det_Vz_init, det_Lambda_init, det_Vz, det_Lambda, x, y, t) # Set the maximum likelihood as likelihood for the full model
+    
+    no_improvement_count = 0
+    iteration = 0
+    
+    while iteration < max_iter and no_improvement_count < 3:
+        # STEP 2: Itroduce mutations and select the best sub-model
+        
+        mutated1 = mutate(parent, p_mut) # Mutate the parent (set arbitrary number of mutated versions, basic setting: 2)
+        mutated2 = mutate(parent, p_mut)
+        
+        Lz_mut1 = reduce_matrix(Lz, mutated1)
+        det_Vz_mut1 = get_det_Vzk(Lz_mut1 @ Lz_mut1.T)
+        Lz_mut1_init = reduce_matrix(Lz_init, mutated1)
+        det_Vz_mut1_init = get_det_Vzk(Lz_mut1_init)
+        
+        Lz_mut2 = reduce_matrix(Lz, mutated2)
+        det_Vz_mut2 = get_det_Vzk(Lz_mut2 @ Lz_mut2.T)
+        Lz_mut2_init = reduce_matrix(Lz_init, mutated1)
+        det_Vz_mut2_init = get_det_Vzk(Lz_mut2_init)
+        
+        # Set the regressor dimensions for the reduced models
+        z1 = np.sum(mutated1)
+        z2 = np.sum(mutated2)
+        
+        # Get respective likelihoods
+        Likelihood_mut1 = get_likelihood(det_Vz_mut1_init, det_Lambda_init, det_Vz_mut1, det_Lambda, x, z1, t)
+        Likelihood_mut2 = get_likelihood(det_Vz_mut2_init, det_Lambda_init, det_Vz_mut2, det_Lambda, x, z2, t)
+        
+        # Compare likelihoods
+        if Likelihood_mut1 > Likelihood_mut2:
+            best_mutation = mutated1
+            # best_Likelihood = Likelihood_mut1 # If you want to track these likelihoods too
+        else:
+            best_mutation = mutated2
+            # best_Likelihood = Likelihood_mut2
+        
+        # STEP 3: Crossover
+        
+        offspring = crossover(best_mutation, parent)
+        
+        # Calculate the likelihood for offspring
+        Lz_offspring = reduce_matrix(Lz, offspring)
+        det_Vz_offspring = get_det_Vzk(Lz_offspring @ Lz_offspring.T)
+        Lz_offspring_init = reduce_matrix(Lz_offspring, offspring)
+        det_Vz_offspring_init = get_det_Vzk(Lz_offspring_init)
+        
+        z_offspring = np.sum(offspring)
+        
+        Likelihood_offspring = get_likelihood(det_Vz_offspring_init, det_Lambda_init, det_Vz_offspring, det_Lambda, x, z_offspring, t)
+        
+        # STEP 4: Evaluate offspring
+        if Likelihood_offspring > Likelihood_max:
+            parent = offspring
+            Likelihood_max = Likelihood_offspring
+            no_improvement_count = 0
+        else:
+            no_improvement_count += 1
+            parent = best_mutation # Immediately move to the best mutated version, another option would be to move to the original parent
+        
+        iteration += 1
+        if iteration % 100 == 0:
+            print(f"Iteration: {iteration}")
+    
+    # parent contains the information about which regressors maximize the likelihood
+    return parent, Likelihood_max
+    
+    
+    
+m = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])
+mask = np.array([1, 0, 1, 0])  # Keep rows 0 and 2
 
+reduced_m = reduce_matrix(m, mask)
+print(reduced_m)
 
-# Generate a lower triangular matrix for testing.
-n = 6  # Size of the square matrix
-lower_triangular_matrix = np.tril(np.random.rand(n, n).astype(np.float64))
-print("Original Lower Triangular Matrix:")
-print(lower_triangular_matrix)
-
-# Test the reduce_matrix function.
-i, k, j = 3, 1, 2  # Example parameters
-reduced_matrix = reduce_matrix(lower_triangular_matrix, i, k, j)
-print("\nReduced Matrix:")
-print(reduced_matrix)
-
-new_mat = orthogonal_transformation(reduced_matrix)
-print(np.round(new_mat, 2))

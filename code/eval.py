@@ -37,7 +37,6 @@ def plot_reward(actions, data, costs):
     
     rewards = reward(actions, data, costs)
     time = np.arange(len(rewards))
-    print(time)
     plt.plot(time, rewards, label=f'cumulative gain', marker='o')
     plt.title('Returns')
     plt.xlabel('Time')
