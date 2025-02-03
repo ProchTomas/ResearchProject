@@ -206,16 +206,27 @@ def mutate(regressor, p_mut):
     for i in range(len(mutated)):
         if np.random.rand() < p_mut:
             mutated[i] = 1 - mutated[i] # Flips the bit with probability p_mut
+            
+    # Ensure at least one regressor is included
+    if not np.any(mutated):
+        idx = np.random.randint(len(mutated))
+        mutated[idx] = 1  # Randomly activate one regressor
+        
     return mutated 
 
 
 def crossover(parent1, parent2):
     crossover_point = np.random.randint(1, len(parent1)-1)
     return np.concatenate((parent1[:crossover_point], parent2[crossover_point:])) # Returns an offspring of two parents
-    
 
-# TODO CORRECT MATRICES BY ORTHOGONAL TRANSFORMATIONS, AVOID ZERO REGRESSORS
-def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
+
+def softmax_selection(likelihoods):
+    exp_likelihoods = np.exp(likelihoods - np.max(likelihoods))
+    probabilities = exp_likelihoods / np.sum(exp_likelihoods)
+    return np.random.choice(len(likelihoods), p=probabilities)
+
+
+def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=500, decay_rate=0.995):
     """
     Algorithm for approximating the optimal structure for regression
     A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure
@@ -225,8 +236,10 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
         x: dimension of data - nu
         y: dimension of regressor - rho
         t: time - delta t
+        batch_size: number of mutated version generated each iteration
         p_mut: probability of mutation
         max_iter: maximum number of iterations in this algorithm
+        decay_rate: rate of exponential decay for p_mut
     Returns:
         tuple of (parent, the highest likelihood value achieved)
     """
@@ -257,54 +270,29 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
     
     while iteration < max_iter and no_improvement_count < 10:
         # STEP 2: Itroduce mutations and select the best sub-model
+        mutations = [mutate(parent, p_mut) for _ in range(batch_size)]
+        likelihoods = []
         
-        # Mutate the parent (set arbitrary number of mutated versions, basic setting: 2)
-        mutated1 = mutate(parent, p_mut)
-        mutated2 = mutate(parent, p_mut)
-        
-        Lz_mut1 = reduce_matrix(Lz, mutated1)
-        Lz_mut1_init = reduce_matrix(Lz_init, mutated1)
-        Lz_mut2 = reduce_matrix(Lz, mutated2)
-        Lz_mut2_init = reduce_matrix(Lz_init, mutated1)
-
-        # These matrices have to be corrected back to lower trinagular
-        Lz_mut1 = func.householder_transform(Lz_mut1)
-        Lz_mut1_init = func.householder_transform(Lz_mut1_init)
-        Lz_mut2 = func.householder_transform(Lz_mut2)
-        Lz_mut2_init = func.householder_transform(Lz_mut2_init)
-
-        # Calculate respective determinants of characteristics for reduced models
-        det_Vz_mut1 = get_det_Vzk(Lz_mut1)
-        det_Vz_mut1_init = get_det_Vzk(Lz_mut1_init)
-        det_Vz_mut2 = get_det_Vzk(Lz_mut2)
-        det_Vz_mut2_init = get_det_Vzk(Lz_mut2_init)
-        
-        # Set the regressor dimensions for the reduced models
-        z1 = np.sum(mutated1)
-        z2 = np.sum(mutated2)
-        
-        # Get respective likelihoods
-        Likelihood_mut1 = get_likelihood(det_Vz_mut1_init, det_Lambda_init, det_Vz_mut1, det_Lambda, x, z1, t)
-        Likelihood_mut2 = get_likelihood(det_Vz_mut2_init, det_Lambda_init, det_Vz_mut2, det_Lambda, x, z2, t)
-        
-        # Compare likelihoods
-        if Likelihood_max < Likelihood_mut1:
-            Likelihood_max = Likelihood_mut1
-        if Likelihood_max < Likelihood_mut2:
-            Likelihood_max = Likelihood_mut2
+        for mutated in mutations:
+            Lz_mut = reduce_matrix(Lz, mutated)
+            Lz_mut_init = reduce_matrix(Lz_init, mutated)
             
-        if Likelihood_mut1 > Likelihood_mut2:
-            best_mutation = mutated1
-            # best_Likelihood = Likelihood_mut1 # If you want to track these likelihoods too
-        else:
-            best_mutation = mutated2
-            # best_Likelihood = Likelihood_mut2
+            Lz_mut = func.householder_transform(Lz_mut)
+            Lz_mut_init = func.householder_transform(Lz_mut_init)
+            
+            det_Vz_mut = get_det_Vzk(Lz_mut)
+            det_Vz_mut_init = get_det_Vzk(Lz_mut_init)
+            
+            z_mut = np.sum(mutated)
+            likelihood = get_likelihood(det_Vz_mut_init, det_Lambda_init, det_Vz_mut, det_Lambda, x, z_mut, t)
+            likelihoods.append(likelihood)
         
+        selected_idx = softmax_selection(np.array(likelihoods))
+        best_mutation = mutations[selected_idx]
+
         # STEP 3: Crossover
-        
         offspring = crossover(best_mutation, parent)
-        
-        # Calculate the likelihood for offspring
+
         Lz_offspring = reduce_matrix(Lz, offspring)
         Lz_offspring_init = reduce_matrix(Lz_offspring, offspring)
 
@@ -325,11 +313,13 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
             no_improvement_count = 0
         else:
             no_improvement_count += 1
-            parent = best_mutation # Immediately move to the best mutated version, another option would be to move to the original parent
+            parent = best_mutation
         
+        p_mut *= decay_rate
         iteration += 1
+        
         if iteration % 100 == 0:
-            print(f"Iteration: {iteration}")
+            print(f"Iteration {iteration}, Current Max Likelihood: {Likelihood_max}")
     
     # parent contains the information about which regressors maximize the likelihood
     return parent, Likelihood_max
