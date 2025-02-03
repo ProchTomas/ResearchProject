@@ -1,12 +1,19 @@
 import math
 import numpy as np
 from scipy.special import gammaln
+import func
 
 
-def orthogonal_transformation(A):
-    # FOR LOWER TRIANGULAR MATRICES
-    n = A.shape[0]
-    m = A.shape[1]
+def householder_transform(input_matrix):
+    """Orthogonal transformation into lower triangular matrix using Householder reflections.
+    Args:
+        input_matrix: matrix to transform
+    Returns:
+        lower triangular matrix
+    """
+    A = input_matrix.copy()
+    n, m = A.shape
+
     for c in range(min(m, n)):
         # Create the Householder vector
         u = np.zeros(n)
@@ -14,25 +21,14 @@ def orthogonal_transformation(A):
         norm_x = np.linalg.norm(u[c:])
         if norm_x == 0:
             continue
-        u[c] += np.sign(u[c]) * norm_x
-        norm_u = np.linalg.norm(u)
-        if norm_u == 0:
-            continue
-        u /= norm_u
+        sign = np.sign(u[c]) if u[c] != 0 else 1 # Ensure consistency of sign
+        u[c] += sign * norm_x
+        u /= np.linalg.norm(u)
 
-        # Apply the Householder transformation to A
-        for j in range(m):
-            A[:, j] -= 2 * np.dot(u, A[:, j]) * u
-
-        # Zero out the elements above the diagonal
-        # in column c
-        A[:c, c:] = 0
-
-    # Zero out the rest
-    A[n-1, c+1:] = 0
-
-    # Return the lower triangular matrix
-    return A
+        # Apply the Householder transformation (vectorized)
+        A -= 2 * np.outer(u, u @ A)
+    # Zeros out elements above the diagonal
+    return np.tril(A)
 
 
 # Intermediate functions f and g
@@ -119,11 +115,10 @@ def update_V(v, data):
 
 
 def get_det_Lz(Lz):
-    """
+    """Computes the determinant as a product of diagonal elements
+    This is done to avoid matrix multiplication in computing determinant of Vzk
     Args:
-        Lz: matrix
-        mu: dimension of reduced regressor
-        
+        Lz: lower triangular matrix
     Returns:
         determinant of L_z,k
     """
@@ -135,12 +130,12 @@ def get_det_Lz(Lz):
 
 
 def get_det_Lf(Lf):
-    """
+    """Computes the determinant as a product of diagonal elements
+    This is done to avoid matrix multiplication in computing determinant of Lambda
     Args:
-        Lf
-        
+        Lf: lower triangular matrix
     Returns:
-        determinant of Lf
+        determinant of L_f
     """
     det = 1
     for j in range(len(Lf)):
@@ -149,18 +144,29 @@ def get_det_Lf(Lf):
 
 
 def get_det_Vzk(Lzk):
+    """Takes in Lzk and computes the determinant of Vzk within this function
+    Args:
+        Lzk: lower triangular matrix
+    Retruns:
+        determinant of submatrix Vzk
+    """
     det_Lzk = get_det_Lz(Lzk)
     det_Vzk = np.power(det_Lzk, -2)
     return det_Vzk
 
 
 def get_det_Lambda(Lf):
+    """Takes in Lzk and computes the determinant of Lambda within this function
+    Args:
+        Lf: lower triangular matrix
+    Returns:
+        determinant of Lambda
+    """
     det_Lf = get_det_Lf(Lf)
     det_Lambda = np.power(det_Lf, -2)
     return det_Lambda
 
 
-# TODO check the functionality
 def get_likelihood(det_Vzk_init, det_Lambda_init, det_Vzk, det_Lambda, x, z, t):
     """
     Args:
@@ -184,13 +190,13 @@ def get_likelihood(det_Vzk_init, det_Lambda_init, det_Vzk, det_Lambda, x, z, t):
     # This could perhaps be optimized by precomputing the differences for det_Lambda
     for j in range(x):
         likelihood += gammaln((delta_t - z + x + 2 - j) / 2) - gammaln((delta_0 - z + x + 1 - j) / 2)
-    likelihood += x / 2 * (np.log(det_Vzk) - np.log(det_Vzk_init)) - (delta_t - z + x + 2) / 2 * np.log(det_Lambda) + (delta_0 - z + x + 1) / 2 * np.log(det_Lambda_init)
+    likelihood -= x / 2 * (np.log(det_Vzk) - np.log(det_Vzk_init)) - (delta_t - z + x + 2) / 2 * np.log(det_Lambda) + (delta_0 - z + x + 1) / 2 * np.log(det_Lambda_init)
     
     return likelihood
 
 
-def reduce_matrix(matrix, mask): # Selects which rows to keep (which regressors to keep) based on the parent vector (here called masking)
-    rows_to_keep = np.where(mask)[0]
+def reduce_matrix(matrix, mask):
+    rows_to_keep = np.where(mask)[0] # Selects which rows to keep (which regressors to keep) based on the parent vector (here called mask)
     reduced_matrix = matrix[rows_to_keep, :]
     return reduced_matrix
 
@@ -207,7 +213,8 @@ def crossover(parent1, parent2):
     crossover_point = np.random.randint(1, len(parent1)-1)
     return np.concatenate((parent1[:crossover_point], parent2[crossover_point:])) # Returns an offspring of two parents
     
-    
+
+# TODO CORRECT MATRICES BY ORTHOGONAL TRANSFORMATIONS, AVOID ZERO REGRESSORS
 def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
     """
     Algorithm for approximating the optimal structure for regression
@@ -220,23 +227,19 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
         t: time - delta t
         p_mut: probability of mutation
         max_iter: maximum number of iterations in this algorithm
-    Returns: parent and the highest likelihood value achieved
+    Returns:
+        tuple of (parent, the highest likelihood value achieved)
     """
     
     print(f"Running structure estimation, p_mut = {p_mut}, max_iter = {max_iter}, size of searched space: {2**y}")
     
-    # Initialize the matrices and their determinants for the initial state
-    # They are calculated here so that they don't have to be recalculated at each iteration
+    # STEP 0: Initialize the matrices and their determinants for the initial state, possibly save and load these for very large matrices
     Lf_init = getL_f(L_init, x)
-    det_Lf_init = get_det_Lf(Lf_init)
     Lz_init = getL_z(L_init, x, y)
-    det_Lz_init = get_det_Lz(Lz_init)
+    det_Lambda_init = get_det_Lambda(Lf_init)
+    det_Vz_init = get_det_Vzk(Lz_init)
     
-    # These will also play a role in each calculation
-    det_Lambda_init = np.power(det_Lf_init, -2)
-    det_Vz_init = np.power(det_Lz_init, -2)
-    
-    # Get the submatrices of L and their determinants
+    # Get the submatrices of current matrix L and their determinants
     Lz = getL_z(L, x, y)
     Lf = getL_f(L, x)
     
@@ -252,20 +255,28 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
     no_improvement_count = 0
     iteration = 0
     
-    while iteration < max_iter and no_improvement_count < 3:
+    while iteration < max_iter and no_improvement_count < 10:
         # STEP 2: Itroduce mutations and select the best sub-model
         
-        mutated1 = mutate(parent, p_mut) # Mutate the parent (set arbitrary number of mutated versions, basic setting: 2)
+        # Mutate the parent (set arbitrary number of mutated versions, basic setting: 2)
+        mutated1 = mutate(parent, p_mut)
         mutated2 = mutate(parent, p_mut)
         
         Lz_mut1 = reduce_matrix(Lz, mutated1)
-        det_Vz_mut1 = get_det_Vzk(Lz_mut1 @ Lz_mut1.T)
         Lz_mut1_init = reduce_matrix(Lz_init, mutated1)
-        det_Vz_mut1_init = get_det_Vzk(Lz_mut1_init)
-        
         Lz_mut2 = reduce_matrix(Lz, mutated2)
-        det_Vz_mut2 = get_det_Vzk(Lz_mut2 @ Lz_mut2.T)
         Lz_mut2_init = reduce_matrix(Lz_init, mutated1)
+
+        # These matrices have to be corrected back to lower trinagular
+        Lz_mut1 = func.householder_transform(Lz_mut1)
+        Lz_mut1_init = func.householder_transform(Lz_mut1_init)
+        Lz_mut2 = func.householder_transform(Lz_mut2)
+        Lz_mut2_init = func.householder_transform(Lz_mut2_init)
+
+        # Calculate respective determinants of characteristics for reduced models
+        det_Vz_mut1 = get_det_Vzk(Lz_mut1)
+        det_Vz_mut1_init = get_det_Vzk(Lz_mut1_init)
+        det_Vz_mut2 = get_det_Vzk(Lz_mut2)
         det_Vz_mut2_init = get_det_Vzk(Lz_mut2_init)
         
         # Set the regressor dimensions for the reduced models
@@ -277,6 +288,11 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
         Likelihood_mut2 = get_likelihood(det_Vz_mut2_init, det_Lambda_init, det_Vz_mut2, det_Lambda, x, z2, t)
         
         # Compare likelihoods
+        if Likelihood_max < Likelihood_mut1:
+            Likelihood_max = Likelihood_mut1
+        if Likelihood_max < Likelihood_mut2:
+            Likelihood_max = Likelihood_mut2
+            
         if Likelihood_mut1 > Likelihood_mut2:
             best_mutation = mutated1
             # best_Likelihood = Likelihood_mut1 # If you want to track these likelihoods too
@@ -290,8 +306,12 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
         
         # Calculate the likelihood for offspring
         Lz_offspring = reduce_matrix(Lz, offspring)
-        det_Vz_offspring = get_det_Vzk(Lz_offspring @ Lz_offspring.T)
         Lz_offspring_init = reduce_matrix(Lz_offspring, offspring)
+
+        Lz_offspring = func.householder_transform(Lz_offspring)
+        Lz_offspring_init = func.householder_transform(Lz_offspring_init)
+
+        det_Vz_offspring = get_det_Vzk(Lz_offspring)
         det_Vz_offspring_init = get_det_Vzk(Lz_offspring_init)
         
         z_offspring = np.sum(offspring)
@@ -313,12 +333,3 @@ def genetic_algorithm(L_init, L, x, y, t, p_mut=0.1, max_iter=500):
     
     # parent contains the information about which regressors maximize the likelihood
     return parent, Likelihood_max
-    
-    
-    
-m = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])
-mask = np.array([1, 0, 1, 0])  # Keep rows 0 and 2
-
-reduced_m = reduce_matrix(m, mask)
-print(reduced_m)
-
