@@ -41,6 +41,12 @@ def build_regressor(data1, t):
     regressor = regressor.flatten()
     return regressor
 
+# TODO incorporate indicators
+def get_indicator_values():
+    """
+    """
+    pass
+
 
 def model_run(data, z_init, V_init, phi, nu, rho):
     """Runs the model on past data
@@ -67,16 +73,16 @@ def model_run(data, z_init, V_init, phi, nu, rho):
     for t in range(3, 50):
         # gather data to update L
         
-        #ma_exp = indicators.mae(data[t], ma_exp, 2)
-        optimal_actions = act.find_optimal_actions(data[:t+1], 0.002, 5)
-        d_t = np.hstack((optimal_actions[t], z_t))
+        # ma_exp = indicators.mae(data[t], ma_exp, 2)
+        # optimal_actions = act.find_optimal_actions(data[:t+1], 0.002, 5)
+        d_t = np.hstack((data[t], z_t))
         # update L
         L = func.refill(L, d_t, phi)
         Lf = func.getL_f(L, nu)
         Lzf = func.getL_zf(L, nu, rho)
 
         # create the regressor
-        z_t1 = build_regressor(optimal_actions, t)
+        z_t1 = build_regressor(data, t)
         
         # calculate prediction
         pred = - np.linalg.inv(Lf).T @ Lzf.T @ z_t1
@@ -88,8 +94,8 @@ def model_run(data, z_init, V_init, phi, nu, rho):
         residuals.append(e_hat)
         z_t = z_t1
     
-    # structure_estimation = func.genetic_algorithm(L_init, L, nu, rho, t)
-    # print(f"Maximum likelihood of {structure_estimation[1]} has been reached with: {structure_estimation[0]}")
+    structure_estimation = func.genetic_algorithm(L_init, L, nu, rho, t, 2)
+    print(f"Maximum likelihood of {structure_estimation[1]} has been reached with: {structure_estimation[0]}")
     
     return np.array(predictions), np.array(residuals)
 
@@ -113,9 +119,11 @@ if __name__ == "__main__":
     # opt_act = act.find_optimal_actions(data_set[:12], 0.002, nu)
     # print(f"Optimal actions: {opt_act}")
     # print(f"Rewards for my actions: {eval.reward(pred_array, data_set[2:len(pred_array)+2], tr_cost)}")
-    even_actions = np.ones((len(pred_array), nu))*0.2
+    # even_actions = np.ones((len(pred_array), nu))*0.2
     # print(f"Rewards for even actions: {eval.reward(even_actions, data_set[2:len(pred_array)+2], tr_cost)}")
-    eval.plot_reward(pred_array, data_set[3: len(pred_array)+3], tr_cost)
+    # eval.plot_reward(pred_array, data_set[3: len(pred_array)+3], tr_cost)
+    # eval.plot_reward(even_actions, data_set[3: len(pred_array)+3], tr_cost)
+    
     
     #eval.residuals_time_plots(res_array)
     #eval.qq_plots(res_array)

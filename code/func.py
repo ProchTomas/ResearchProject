@@ -151,7 +151,11 @@ def get_det_Vzk(Lzk):
         determinant of submatrix Vzk
     """
     det_Lzk = get_det_Lz(Lzk)
-    det_Vzk = np.power(det_Lzk, -2)
+    # Handle small determinants to override the division by zero issue (does not happen too often)
+    epsilon = 1e-12
+    safe_det_Lzk = np.maximum(det_Lzk, epsilon)
+    
+    det_Vzk = np.power(safe_det_Lzk, -2)
     return det_Vzk
 
 
@@ -221,12 +225,14 @@ def crossover(parent1, parent2):
 
 
 def softmax_selection(likelihoods):
-    exp_likelihoods = np.exp(likelihoods - np.max(likelihoods))
+    # Shift likelihoods to prevent infinities after exponential is applied
+    likelihoods -= np.max(likelihoods)
+    exp_likelihoods = np.exp(likelihoods)
     probabilities = exp_likelihoods / np.sum(exp_likelihoods)
     return np.random.choice(len(likelihoods), p=probabilities)
 
 
-def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=500, decay_rate=0.995):
+def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=2, decay_rate=0.995):
     """
     Algorithm for approximating the optimal structure for regression
     A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure
@@ -285,16 +291,22 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=500, d
             
             z_mut = np.sum(mutated)
             likelihood = get_likelihood(det_Vz_mut_init, det_Lambda_init, det_Vz_mut, det_Lambda, x, z_mut, t)
-            likelihoods.append(likelihood)
+            likelihoods.append((likelihood, mutated))
+            
+            # For soft-max selection
+            # likelihoods.append(likelihood)
         
-        selected_idx = softmax_selection(np.array(likelihoods))
-        best_mutation = mutations[selected_idx]
+        best_mutation = max(likelihoods, key=lambda x: x[0])[1]
+        
+        # For soft-max selection
+        # selected_idx = softmax_selection(np.array(likelihoods))
+        # best_mutation = mutations[selected_idx]
 
         # STEP 3: Crossover
         offspring = crossover(best_mutation, parent)
 
         Lz_offspring = reduce_matrix(Lz, offspring)
-        Lz_offspring_init = reduce_matrix(Lz_offspring, offspring)
+        Lz_offspring_init = reduce_matrix(Lz_init, offspring)
 
         Lz_offspring = func.householder_transform(Lz_offspring)
         Lz_offspring_init = func.householder_transform(Lz_offspring_init)
