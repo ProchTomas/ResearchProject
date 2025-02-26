@@ -53,66 +53,111 @@ def initialize_matrices_for_Ricatti_reccursion(N, rho, tr_costs):
         N: number of assets
         rho: dimension of the regressor
         tr_costs: transactions costs
+    Returns:
+        Initial matrices X, Y, D and the square root of loss matrix Q
     """
     
-    # x_t = Ax_t-1
-    A = np.zeros((2*N+rho, 2*N+rho))
-    A[N:2*N, :N] = np.eye(N)
-    A[3*N:, 2*N:N+rho] = np.eye(rho - N)
+    # x_t = X_tx_t-1 + Ya_t
+    # TODO initialize X properly after the structure of F is decided
+    X = np.zeros((2*N+rho, 2*N+rho))
+    X[N:2*N, :N] = np.eye(N)
+    X[3*N:, 2*N:N+rho] = np.eye(rho - N)
 
-    # a_t = Ba_t-1
-    B = np.zeros((2*N + rho, N))
-    B[:N, :N] = np.eye(N)
+    Y = np.zeros((2*N + rho, N))
+    Y[:N, :N] = np.eye(N)
 
     # D is a cost matrix
     D = np.eye(N) * tr_costs
+    D_sqrt = np.sqrt(D)
+    D_sqrt_inv = np.linalg.inv(D_sqrt)
     
-    # V(x_t) = x_t^T P x_t
-    P = np.zeros((2*N+rho, 2*N+rho))
-    P[:N, :N] = D
-    P[:N, N:2*N] = -1*D
-    P[N:2*N, :N] = -1*D
-    P[N:2*N, N:2*N] = D
-    P[2*N:3*N, :N] = -1*np.eye(N)
+    # V(x_t) = x_t^T Q^TQ x_t
+    Q = np.zeros((2*N+rho, 2*N+rho))
+    Q[:N, :N] = D_sqrt
+    Q[:N, N:2*N] = -1*D_sqrt
+    Q[:N, 2*N:3*N] = -1/2*D_sqrt_inv
     
-    return A, B, D, P
+    return X, Y, D, Q
 
     
-def update_A(N, rho, A_hat_t, A):
+def update_X(N, rho, A_hat_t, X_now):
     """
     Args:
         N: number of assets
         rho: dimension of the regressor
         A_hat_t: estimate for the covariance matrix
-        A: x updating matrix
-    Returns: updated matrix A
+        X: x updating matrix
+    Returns: updated matrix X
     """
-    A[2*N:3*N, 2*N:2*N + rho] = A_hat_t
-    return A
+    # X is re-naimed to prevent miss-assignment
+    # TODO include matrix F for regressors update
+    X_new = X_now
+    X_new[2*N:3*N, 2*N:2*N + rho] = A_hat_t
+    return X_new
 
 
-def action_generation(x, A, P, B, D):
+# TODO correct this after derivation of the square root form
+def action_generation(N, rho, x, X, Y, Q, D, A, h):
     """Generate optimal action
     Args:
+        N: number of assets
+        rho: dimension of the regressor
         x: state vector
-        A: x updating matrix
-        P: state reward matrix
-        B: action updating matrix
+        X: state updating matrix
+        B: state updating matrix
+        Q: square root of the loss matrix
         D: cost matrix
+        A: matrix of regression coefficients
+        h: horizon
     Returns: optimal action for current state
     """
-    opt_act = - x @ A.T @ P @ B @ np.linalg.inv(D)
+    # TODO Figure out the time updating of X through A_hat
     
-    # Normalize to obtain viable action
-    return opt_act / np.sum(opt_act)
+    # Initialize H
+    H = np.zeros_like(Q)
+    
+    for _ in range(h):
+        H_tilde = np.block([[Q],[H]])
+        
+        # Orthogonal transformation of (Q \\ H), U^TU = I
+        # R is the new H_tilde
+        U, R = np.linalg.qr(H_tilde)
+        
+        # Make the estimation and add row of zeros to make up for lost dimension
+        H_YX = np.block([[R @ Y, R @ X], [np.zeros((1, 3*N+rho))]])
+        
+        # Partiiton this matrix
+        H_a = H_YX[:N, :N]
+        H_x = H_YX[:N, N:]
+        H_new = H_YX[N:,N:]
+        
+        # Calculate Lagrange multiplier Lambda
+        ones = np.ones((N, 1))
+        H_a_inv = np.linalg.inv(H_a)
+        lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
+        lmbda = lmbda.item()
+        
+        # Add sqrt(lambda) to the last column of H_new
+        H_new[:, -1] += np.sqrt(lmbda)
+        
+        # Set H to H_new for the next iteration
+        H = H_new
+    
+    # Get the optimal action
+    a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lmbda * ones)
+    a_opt = a_opt.flatten()
+    return a_opt
+    
+    
+    
+    
 
-# Test functionality
-N = 2
-rho = 4
-tr_costs = 0.002
+n = 2
+m = 2
+x, y, d, q = initialize_matrices_for_Ricatti_reccursion(n, m, 0.02)
+z = np.array([0.8, 0.2, 0.2, 0.8, -0.05, -0.01])
+action_generation(n, m, z, x, y, q, d, 0)
 
-A_hat = np.ones((N, rho)) * 0.4 # Set A_hat ambiguous
-A, B, D, P = initialize_matrices_for_Ricatti_reccursion(N, rho, tr_costs)
-A = update_A(N, rho, A_hat, A)
-x = np.array([0.35, 0.65, 0.2, 0.8, -0.03, -0.1, 0.23, 0.09])
-optimal_action = action_generation(x, A, P, B, D)
+
+
+    
