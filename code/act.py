@@ -86,58 +86,67 @@ def update_X(N, rho, A_hat_t, X_now):
         N: number of assets
         rho: dimension of the regressor
         A_hat_t: estimate for the covariance matrix
-        X: x updating matrix
+        X_now: x updating matrix
     Returns: updated matrix X
     """
-    # X is re-naimed to prevent miss-assignment
     # TODO include matrix F for regressors update
     X_new = X_now
     X_new[2*N:3*N, 2*N:2*N + rho] = A_hat_t
     return X_new
 
 
-# TODO correct this after derivation of the square root form
-def action_generation(N, rho, x, X, Y, Q, D, A, h):
+def action_generation(N, rho, x, X_now, Y, Q, A, h):
     """Generate optimal action
     Args:
         N: number of assets
         rho: dimension of the regressor
-        x: state vector
-        X: state updating matrix
-        B: state updating matrix
+        x: state vector (row vector)
+        X_now: state updating matrix
+        Y: state updating matrix
         Q: square root of the loss matrix
-        D: cost matrix
         A: matrix of regression coefficients
         h: horizon
     Returns: optimal action for current state
     """
-    # TODO Figure out the time updating of X through A_hat
     
     # Initialize H
     H = np.zeros_like(Q)
+    X = update_X(N, rho, A, X_now)
     
-    for _ in range(h):
+    # calculate the "estimated" states into the future and reverse the ordering
+    states = np.zeros((h, len(x)))
+    states[0] = x
+    for i in range(1, h):
+        states[i] = X @ states[i-1]
+    states = states[::-1]
+    print(states)
+    
+    # Iterate backwards in time
+    for j in range(h):
         H_tilde = np.block([[Q],[H]])
         
         # Orthogonal transformation of (Q \\ H), U^TU = I
         # R is the new H_tilde
         U, R = np.linalg.qr(H_tilde)
         
-        # Make the estimation and add row of zeros to make up for lost dimension
+        # Make the estimation and add row of zeros below the new matrix to make up for lost dimension
         H_YX = np.block([[R @ Y, R @ X], [np.zeros((1, 3*N+rho))]])
         
-        # Partiiton this matrix
+        # Get submatrices
         H_a = H_YX[:N, :N]
         H_x = H_YX[:N, N:]
         H_new = H_YX[N:,N:]
         
-        # Calculate Lagrange multiplier Lambda
+        # Calculate Lagrange multiplier lambda
         ones = np.ones((N, 1))
         H_a_inv = np.linalg.inv(H_a)
-        lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
+        
+        x_j = states[j]
+        
+        lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x_j.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
         lmbda = lmbda.item()
         
-        # Add sqrt(lambda) to the last column of H_new
+        # Add square root of lambda to the last column of H_new
         H_new[:, -1] += np.sqrt(lmbda)
         
         # Set H to H_new for the next iteration
@@ -156,8 +165,8 @@ n = 2
 m = 2
 x, y, d, q = initialize_matrices_for_Ricatti_reccursion(n, m, 0.02)
 z = np.array([0.8, 0.2, 0.2, 0.8, -0.05, -0.01])
-action_generation(n, m, z, x, y, q, d, 0)
 
+action_generation(n, m, z, x, y, q, 0, 2)
 
 
     

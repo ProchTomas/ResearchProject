@@ -54,21 +54,21 @@ def refill(l, data, phi):
     Returns:
         updated L
     """
-    sigma = phi
+    sigma = np.sqrt(phi)
     n = l.shape[0]
     # Initialize the resulting matrix L with zeros
     L = np.zeros((n, n))
     for i in range(n):
         f_i = get_f(i, l, data)
-        a = sigma
+        a = sigma / np.sqrt(phi)
         # Update sigma using the Euclidean norm
         sigma = np.sqrt(f_i**2 + a**2)
         # Update the diagonal element
-        L[i, i] = a / (sigma * phi) * l[i, i]
+        L[i, i] = a / sigma * l[i, i]
         for j in range(i):
             g_j = get_g(i, j, l, data)
             # Update the off-diagonal element
-            L[i, j] = a / (sigma * phi) * (l[i, j] - f_i * g_j / a**2)
+            L[i, j] = a / sigma * (l[i, j] - f_i * g_j / a**2)
     return L
 
 
@@ -335,3 +335,67 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=2, dec
     
     # parent contains the information about which regressors maximize the likelihood
     return parent, Likelihood_max
+
+
+def F_phi(p_init, p, m, N):
+    det_m = 0
+    for i in range(len(m[0])):
+        det_m += np.log(np.power(m[i][i], 2))
+    f_value = p * np.log(p / p_init) + (1 - p) * np.log((1 - p) / (1 - p_init)) + N/2 * det_m
+    return f_value
+
+
+def M_phi(L_z, z, p):
+    m_square_root = np.block([[np.sqrt(p) * z.T], [np.linalg.inv(L_z)]])
+    m = householder_transform(m_square_root)
+    return m
+
+
+def opt_forgetting_factor(L, z, phi_init, N, rho, tol=1e-2, max_iter=100):
+    """
+    Algorithm to find the optimal forgetting factor for the current data
+    Args:
+        L: matrix L at time t-1
+        z: new regressor
+        phi_init: prior
+        N: dimension of the data
+        rho: dimension of the regressor
+    Returns:
+        Optimal forgetting factor phi
+    """
+    golden_ratio = 0.618
+
+    L_z = getL_z(L, N, rho)
+
+    a, b = 0, 1
+
+    # Compute initial test points
+    x1 = a + 0.0001
+    x2 = b - 0.0001
+
+    # Evaluate function at test points
+    f1 = F_phi(phi_init, x1, M_phi(L_z, z, x1), N)
+    f2 = F_phi(phi_init, x2, M_phi(L_z, z, x2), N)
+
+    for _ in range(max_iter):
+        if f1 > f2:  # If f(x1) > f(x2), minimum is in [x1, b]
+            a = x1
+            x1 = x2
+            f1 = f2
+            x2 = a + golden_ratio * (b - a)
+            f2 = F_phi(phi_init, x2, M_phi(L_z, z, x2), N)
+        else:  # If f(x1) <= f(x2), minimum is in [a, x2]
+            b = x2
+            x2 = x1
+            f2 = f1
+            x1 = b - golden_ratio * (b - a)
+            f1 = F_phi(phi_init, x1, M_phi(L_z, z, x1), N)
+        # Check for convergence
+        if abs(b - a) < tol:
+            break
+
+        # print(f"Current interval: [{a:.6f}, {b:.6f}]")
+
+    # Return the midpoint of the final interval as the optimal value
+    phi_best = (a + b) / 2
+    return phi_best

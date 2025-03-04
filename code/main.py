@@ -75,8 +75,10 @@ def model_run(data, z_init, V_init, phi, nu, rho):
         
         # ma_exp = indicators.mae(data[t], ma_exp, 2)
         # optimal_actions = act.find_optimal_actions(data[:t+1], 0.002, 5)
-        d_t = np.hstack((data[t], z_t))
+        d_t = np.hstack((np.flip(data[t]), z_t))
         # update L
+        
+        phi = func.opt_forgetting_factor(L, z_t, phi_init=0.9, nu=nu, rho=rho)
         L = func.refill(L, d_t, phi)
         Lf = func.getL_f(L, nu)
         Lzf = func.getL_zf(L, nu, rho)
@@ -85,13 +87,12 @@ def model_run(data, z_init, V_init, phi, nu, rho):
         z_t1 = build_regressor(data, t)
         
         # calculate prediction
-        pred = - np.linalg.inv(Lf).T @ Lzf.T @ z_t1
+        A_hat = - np.linalg.inv(Lf).T @ Lzf.T
+        pred = A_hat @ z_t1
         
-        pred = pred / pred.sum() # Normalization for action prediction
-        
-        e_hat = pred - data[t+1]
+        e_hat = data[t+1] - pred
         predictions.append(pred)
-        residuals.append(e_hat)
+        residuals.append(np.dot(e_hat, e_hat))
         z_t = z_t1
     
     structure_estimation = func.genetic_algorithm(L_init, L, nu, rho, t, 2)
@@ -129,15 +130,3 @@ if __name__ == "__main__":
     #eval.qq_plots(res_array)
     #print(np.round(opt_act))
     
-    
-    # SIMPLE EXAMPLE
-    # states = np.array([[-0.0913041 , -0.08946959],
-    # [ 0.06654758,  0.02052656],
-    # [-0.03359455,  0.01767233],
-    # [ 0.05817014, -0.09328192],
-    # [ 0.04623629, -0.0128111 ],
-    # [ 0.01294508,  0.08846527],
-    # [ 0.00631335,  0.01738005],
-    # [-0.02190309, -0.05807255],
-    # [ 0.04788694, -0.02657513],
-    # [ 0.05346319,  0.04080269]])
