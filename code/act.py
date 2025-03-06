@@ -112,6 +112,16 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
     # Initialize H
     H = np.zeros_like(Q)
     X = update_X(N, rho, A, X_now)
+    
+    # Helpful vectors to define before the loop
+    ones = np.ones((N, 1))
+    e_N = np.zeros_like(x)
+    e_N[-1] = 1
+
+    # Initialize to zeros to prevent referencing before assignment
+    H_a = np.zeros((N, N))
+    H_a_inv = np.zeros_like(H_a)
+    H_x = np.zeros((N, 2*N + rho))
 
     # Iterate backwards in time
     for j in range(h):
@@ -124,29 +134,29 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
         # Make the estimation and add row of zeros below the new matrix to make up for lost dimension
         H_YX = np.block([[R @ Y, R @ X]])
 
-        # Get submatrices
+        # Get sub-matrices
         H_a = H_YX[:N, :N]
         H_x = H_YX[:N, N:]
-
-        # Calculate Lagrange multiplier lambda
-        ones = np.ones((N, 1))
+        
+        # Inverse of H_a is needed multiple times
         H_a_inv = np.linalg.inv(H_a)
-
-        one_ = np.zeros_like(x)
-        one_[-1] = 1
-
-        M = np.outer(ones, one_ + ones.T @ H_a_inv @ H_x / (ones.T @ H_a_inv @ ones))
+        
+        # Correct H_t-1 to account for the constraints
+        M = np.outer(ones, e_N + ones.T @ H_a_inv @ H_x / (ones.T @ H_a_inv @ ones))
         H_new = np.block([[H_YX[N:, N:]], [M]])
         U_2, R_2 = np.linalg.qr(H_new)
 
-        # Set H to H_new for the next iteration
+        # Set H to corrected H_t-1 for the next iteration
         H = R_2
+        
+    # Calculate the Lagrange multiplier
+    lbd = - (1 + ones.T @ H_a_inv @ H_x @ x.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
+    lbd = lbd.item()
+    
     # Get the optimal action
-    lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
-    lmbda = lmbda.item()
-
-    a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lmbda * ones)
+    a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lbd * ones)
     a_opt = a_opt.flatten()
+    
     return a_opt
     
     
