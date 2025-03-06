@@ -108,38 +108,39 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
         h: horizon
     Returns: optimal action for current state
     """
-    
+
     # Initialize H
     H = np.zeros_like(Q)
     X = update_X(N, rho, A, X_now)
-    
+
     # Iterate backwards in time
     for j in range(h):
-        H_tilde = np.block([[Q],[H]])
-        
+        H_tilde = np.block([[Q], [H]])
+
         # Orthogonal transformation of (Q \\ H), U^TU = I
         # R is the new H_tilde
         U, R = np.linalg.qr(H_tilde)
-        
+
         # Make the estimation and add row of zeros below the new matrix to make up for lost dimension
-        H_YX = np.block([[R @ Y, R @ X], [np.zeros((1, 3*N+rho))]])
-        
+        H_YX = np.block([[R @ Y, R @ X]])
+
         # Get submatrices
         H_a = H_YX[:N, :N]
         H_x = H_YX[:N, N:]
-        
+
         # Calculate Lagrange multiplier lambda
         ones = np.ones((N, 1))
         H_a_inv = np.linalg.inv(H_a)
-        
-        M = np.outer(ones, ones.T @ H_a_inv @ H_x / (ones.T @ H_a_inv @ ones))
-        
-        H_new = np.block([[H_YX[N:,N:]], [M]])
+
+        one_ = np.zeros_like(x)
+        one_[-1] = 1
+
+        M = np.outer(ones, one_ + ones.T @ H_a_inv @ H_x / (ones.T @ H_a_inv @ ones))
+        H_new = np.block([[H_YX[N:, N:]], [M]])
         U_2, R_2 = np.linalg.qr(H_new)
-        
+
         # Set H to H_new for the next iteration
         H = R_2
-    
     # Get the optimal action
     lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
     lmbda = lmbda.item()
