@@ -113,14 +113,6 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
     H = np.zeros_like(Q)
     X = update_X(N, rho, A, X_now)
     
-    # calculate the "estimated" states into the future and reverse the ordering
-    states = np.zeros((h, len(x)))
-    states[0] = x
-    for i in range(1, h):
-        states[i] = X @ states[i-1]
-    states = states[::-1]
-    print(states)
-    
     # Iterate backwards in time
     for j in range(h):
         H_tilde = np.block([[Q],[H]])
@@ -135,24 +127,23 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
         # Get submatrices
         H_a = H_YX[:N, :N]
         H_x = H_YX[:N, N:]
-        H_new = H_YX[N:,N:]
         
         # Calculate Lagrange multiplier lambda
         ones = np.ones((N, 1))
         H_a_inv = np.linalg.inv(H_a)
         
-        x_j = states[j]
+        M = np.outer(ones, ones.T @ H_a_inv @ H_x / (ones.T @ H_a_inv @ ones))
         
-        lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x_j.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
-        lmbda = lmbda.item()
-        
-        # Add square root of lambda to the last column of H_new
-        H_new[:, -1] += np.sqrt(lmbda)
+        H_new = np.block([[H_YX[N:,N:]], [M]])
+        U_2, R_2 = np.linalg.qr(H_new)
         
         # Set H to H_new for the next iteration
-        H = H_new
+        H = R_2
     
     # Get the optimal action
+    lmbda = - (1 + ones.T @ H_a_inv @ H_x @ x.reshape(-1, 1)) / (ones.T @ H_a_inv @ ones)
+    lmbda = lmbda.item()
+
     a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lmbda * ones)
     a_opt = a_opt.flatten()
     return a_opt
