@@ -351,51 +351,43 @@ def M_phi(L_z, z, p):
     return m
 
 
-def opt_forgetting_factor(L, z, phi_init, N, rho, tol=1e-2, max_iter=100):
+def opt_forgetting_factor(L_z, z, N, phi_init, a=0, b=1, tol=1e-6):
     """
-    Algorithm to find the optimal forgetting factor for the current data
+    Golden section search algorithm to find the optimal forgetting factor.
     Args:
-        L: matrix L at time t-1
-        z: new regressor
-        phi_init: prior
-        N: dimension of the data
-        rho: dimension of the regressor
+        L_z: submatrix of L
+        z: current regressor
+        N: dimension of data - nu
+        phi_init: initial guess for the optimal forgetting factor
     Returns:
-        Optimal forgetting factor phi
+        optimal forgetting factor at for the contemporary data
     """
-    golden_ratio = 0.618
+    gr = (1 + 5 ** 0.5) / 2
 
-    L_z = getL_z(L, N, rho)
-
-    a, b = 0, 1
-
-    # Compute initial test points
-    x1 = a + 0.0001
-    x2 = b - 0.0001
+    # Calculate initial test points
+    c = b - (b - a) / gr
+    d = a + (b - a) / gr
 
     # Evaluate function at test points
-    f1 = F_phi(phi_init, x1, M_phi(L_z, z, x1), N)
-    f2 = F_phi(phi_init, x2, M_phi(L_z, z, x2), N)
+    fc = F_phi(phi_init, c, M_phi(L_z, z, c), N)
+    fd = F_phi(phi_init, d, M_phi(L_z, z, d), N)
 
-    for _ in range(max_iter):
-        if f1 > f2:  # If f(x1) > f(x2), minimum is in [x1, b]
-            a = x1
-            x1 = x2
-            f1 = f2
-            x2 = a + golden_ratio * (b - a)
-            f2 = F_phi(phi_init, x2, M_phi(L_z, z, x2), N)
-        else:  # If f(x1) <= f(x2), minimum is in [a, x2]
-            b = x2
-            x2 = x1
-            f2 = f1
-            x1 = b - golden_ratio * (b - a)
-            f1 = F_phi(phi_init, x1, M_phi(L_z, z, x1), N)
-        # Check for convergence
-        if abs(b - a) < tol:
-            break
+    while abs(b - a) > tol:
+        if fc < fd:
+            # Minimum is in [a, d]
+            b = d
+            d = c
+            fd = fc
+            c = b - (b - a) / gr
+            fc = F_phi(phi_init, c, M_phi(L_z, z, c), N)
+        else:
+            # Minimum is in [c, b]
+            a = c
+            c = d
+            fc = fd
+            d = a + (b - a) / gr
+            fd = F_phi(phi_init, d, M_phi(L_z, z, d), N)
 
-        # print(f"Current interval: [{a:.6f}, {b:.6f}]")
-
-    # Return the midpoint of the final interval as the optimal value
-    phi_best = (a + b) / 2
-    return phi_best
+    # Return midpoint of final interval
+    x = (a + b) / 2
+    return x
