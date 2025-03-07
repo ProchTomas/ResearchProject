@@ -345,18 +345,24 @@ def F_phi(p_init, p, m, N):
     return f_value
 
 
-def M_phi(L_z, z, p):
-    m_square_root = np.block([[np.sqrt(p) * z.T], [np.linalg.inv(L_z)]])
+# Simpler version
+# def M_phi(L_z, z, p):
+#     m_square_root = np.block([[np.sqrt(p) * z.T], [np.linalg.inv(L_z)]])
+#     m = householder_transform(m_square_root)
+#     return m
+
+def M_phi(lz1, lz2, p):
+    m_square_root = np.block([[np.sqrt(p) * np.linalg.inv(lz1)], [np.sqrt(1-p) * np.linalg.inv(lz2)]])
     m = householder_transform(m_square_root)
     return m
 
 
-def opt_forgetting_factor(L_z, z, N, phi_init, a=0, b=1, tol=1e-6):
+def opt_forgetting_factor(L_z1, L_z2, N, phi_init, a=0, b=1, tol=1e-6):
     """
     Golden section search algorithm to find the optimal forgetting factor.
     Args:
-        L_z: submatrix of L
-        z: current regressor
+        L_z1: submatrix of current L, replace with L_z of previous L for the simpler version
+        L_z2: submatrix of reference L, replace with current regressor for the simpler version
         N: dimension of data - nu
         phi_init: initial guess for the optimal forgetting factor
     Returns:
@@ -369,8 +375,8 @@ def opt_forgetting_factor(L_z, z, N, phi_init, a=0, b=1, tol=1e-6):
     d = a + (b - a) / gr
 
     # Evaluate function at test points
-    fc = F_phi(phi_init, c, M_phi(L_z, z, c), N)
-    fd = F_phi(phi_init, d, M_phi(L_z, z, d), N)
+    fc = F_phi(phi_init, c, M_phi(L_z1, L_z2, c), N)
+    fd = F_phi(phi_init, d, M_phi(L_z1, L_z2, d), N)
 
     while abs(b - a) > tol:
         if fc < fd:
@@ -379,14 +385,14 @@ def opt_forgetting_factor(L_z, z, N, phi_init, a=0, b=1, tol=1e-6):
             d = c
             fd = fc
             c = b - (b - a) / gr
-            fc = F_phi(phi_init, c, M_phi(L_z, z, c), N)
+            fc = F_phi(phi_init, c, M_phi(L_z1, L_z2, c), N)
         else:
             # Minimum is in [c, b]
             a = c
             c = d
             fc = fd
             d = a + (b - a) / gr
-            fd = F_phi(phi_init, d, M_phi(L_z, z, d), N)
+            fd = F_phi(phi_init, d, M_phi(L_z1, L_z2, d), N)
 
     # Return midpoint of final interval
     x = (a + b) / 2
