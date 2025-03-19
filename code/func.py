@@ -232,7 +232,7 @@ def softmax_selection(likelihoods):
     return np.random.choice(len(likelihoods), p=probabilities)
 
 
-def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=2, decay_rate=0.995):
+def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=1.5*1e3, decay_rate=0.995):
     """
     Algorithm for approximating the optimal structure for regression
     A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure
@@ -274,7 +274,7 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=2, dec
     no_improvement_count = 0
     iteration = 0
     
-    while iteration < max_iter and no_improvement_count < 10:
+    while iteration < max_iter:
         # STEP 2: Itroduce mutations and select the best sub-model
         mutations = [mutate(parent, p_mut) for _ in range(batch_size)]
         likelihoods = []
@@ -291,16 +291,16 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.1, max_iter=2, dec
             
             z_mut = np.sum(mutated)
             likelihood = get_likelihood(det_Vz_mut_init, det_Lambda_init, det_Vz_mut, det_Lambda, x, z_mut, t)
-            likelihoods.append((likelihood, mutated))
+            # likelihoods.append((likelihood, mutated))
             
             # For soft-max selection
-            # likelihoods.append(likelihood)
+            likelihoods.append(likelihood)
         
-        best_mutation = max(likelihoods, key=lambda x: x[0])[1]
+        # best_mutation = max(likelihoods, key=lambda x: x[0])[1]
         
         # For soft-max selection
-        # selected_idx = softmax_selection(np.array(likelihoods))
-        # best_mutation = mutations[selected_idx]
+        selected_idx = softmax_selection(np.array(likelihoods))
+        best_mutation = mutations[selected_idx]
 
         # STEP 3: Crossover
         offspring = crossover(best_mutation, parent)
@@ -352,7 +352,12 @@ def F_phi(p_init, p, m, N):
 #     return m
 
 def M_phi(lz1, lz2, p):
-    m_square_root = np.block([[np.sqrt(p) * np.linalg.inv(lz1)], [np.sqrt(1-p) * np.linalg.inv(lz2)]])
+    # Simpler case, where lz1 = z_t
+    if lz1.ndim == 1:
+        m_square_root = np.block([[np.sqrt(p) * lz1], [np.sqrt(1-p) * np.linalg.inv(lz2)]])
+    # General case
+    else:
+        m_square_root = np.block([[np.sqrt(p) * np.linalg.inv(lz1)], [np.sqrt(1-p) * np.linalg.inv(lz2)]])
     m = householder_transform(m_square_root)
     return m
 

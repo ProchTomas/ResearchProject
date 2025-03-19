@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from scipy.optimize import minimize
+from scipy.optimize import linprog
 
 
 def utility_function(actions, data, costs):
@@ -95,6 +96,36 @@ def update_X(N, rho, A_hat_t, X_now):
     return X_new
 
 
+def solve_lp_correction(a_star):
+    """Solve the LP to enforce a_i >= 0 by introducing slack variables."""
+
+    n = len(a_star)
+
+    # Objective function: minimize sum of slack variables (1^T ν)
+    c = np.hstack([np.zeros(n), np.ones(n)])  # [0,...,0, 1,...,1]
+
+    # Constraints: a_i + ν_i >= 0  (rewritten as -a_i - ν_i <= 0)
+    A_ub = np.hstack([-np.eye(n), -np.eye(n)])  # Coefficients for inequalities
+    b_ub = np.zeros(n)  # Right-hand side
+
+    # Equality constraint: sum(a) = 1
+    A_eq = np.hstack([np.ones((1, n)), np.zeros((1, n))])  # [1,1,...,1 | 0,0,...,0]
+    b_eq = np.array([1])
+
+    # Bounds: ν_i >= 0
+    bounds = [(None, None)] * n + [(0, None)] * n
+
+    # Solve LP
+    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
+
+    if res.success:
+        a_corrected = res.x[:n]  # Extract corrected a
+        nu_values = res.x[n:]  # Extract slack variables ν
+        return a_corrected, nu_values
+    else:
+        raise ValueError("LP correction failed!")
+
+
 def action_generation(N, rho, x, X_now, Y, Q, A, h):
     """Generate optimal action
     Args:
@@ -157,18 +188,11 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
     a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lbd * ones)
     a_opt = a_opt.flatten()
     
+    # TODO Correct matrix H_{t-1} with the multipliers nu
+    a_opt = solve_lp_correction(a_opt)
+    
     return a_opt
-    
-    
-    
-    
 
-n = 2
-m = 2
-x, y, d, q = initialize_matrices_for_Ricatti_reccursion(n, m, 0.02)
-z = np.array([0.8, 0.2, 0.2, 0.8, -0.05, -0.01])
-
-action_generation(n, m, z, x, y, q, 0, 2)
 
 
     

@@ -64,24 +64,6 @@ def mae(data_point, ma_exponential, period):
     """
     alpha = 2 / (period + 1)
     return alpha * data_point + (1 - alpha) * ma_exponential # returns moving average exponential
-
-
-def mom_osc(t, data, period):
-    """
-    Args:
-        t: current time step
-        data: data array
-        period: the period for moving average
-    Returns:
-        momentum oscilator
-    """
-    num_g, num_l = 0
-    for i in range(period):
-        if data[t-i] >= 0:
-            num_g += 1
-        else:
-            num_l += 1
-    return (num_g - num_l) / (num_g + num_l) # range 0, 1 that indicates the current momentum
         
 
 def macd(mae1, mae2):
@@ -104,13 +86,21 @@ def stoch_osc(t, data, period):
     Returns:
         custom stochastic oscilator
     """
-    low, high = 0
-    for i in range(period):
-        if data[t-i] > high:
-            high = data[t-i]
-        if data[t-i] < low:
-            low = data[t-i]
-    return (data[t] - abs(low)) / (high - abs(low)) # returns value from range [0, 1]
+    num_vars = len(data[t])
+    low = [0] * num_vars
+    high = [0] * num_vars
+    
+    osc_values = []
+    for j in range(num_vars):
+        for i in range(period):
+            if data[t-i][j] > high[j]:
+                high[j] = data[t-i][j]
+                
+            if data[t-i][j] < low[j]:
+                low[j] = data[t-i][j]
+        osc_values.append((data[t][j] - abs(low[j])) / (high[j] - abs(low[j]))) 
+        
+    return osc_values # returns value from range [0, 1]
 
 
 def vol_osc(t, volume, period1, period2):
@@ -126,4 +116,6 @@ def vol_osc(t, volume, period1, period2):
     """
     short_sma = sma(t, volume, period1)
     long_sma = sma(t, volume, period2)
+    if np.any(short_sma == 0):
+        return short_sma
     return (short_sma - long_sma) / short_sma # returns value from range [0, 1]
