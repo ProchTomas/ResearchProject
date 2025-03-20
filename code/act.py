@@ -97,31 +97,32 @@ def update_X(N, rho, A_hat_t, X_now):
 
 
 def solve_lp_correction(a_star):
-    """Solve the LP to enforce a_i >= 0 by introducing slack variables."""
-
+    """Solve the LP with the complementarity constraint a^T nu = 0."""
+    
     n = len(a_star)
-
+    
     # Objective function: minimize sum of slack variables (1^T ν)
-    c = np.hstack([np.zeros(n), np.ones(n)])  # [0,...,0, 1,...,1]
+    c = np.ones(n)
 
-    # Constraints: a_i + ν_i >= 0  (rewritten as -a_i - ν_i <= 0)
-    A_ub = np.hstack([-np.eye(n), -np.eye(n)])  # Coefficients for inequalities
-    b_ub = np.zeros(n)  # Right-hand side
+    # Inequality constraint: a + ν >= 0  (rewritten as -a - ν <= 0)
+    A_ub = -np.eye(n)
+    b_ub = a_star
 
-    # Equality constraint: sum(a) = 1
-    A_eq = np.hstack([np.ones((1, n)), np.zeros((1, n))])  # [1,1,...,1 | 0,0,...,0]
-    b_eq = np.array([1])
+    # Equality constraints:
+    A_eq = np.vstack([
+        np.ones(n),  # sum(a + ν) = 1
+        a_star       # a^T ν = 0 (complementarity condition)
+    ])
+    b_eq = np.array([1, 0])
 
     # Bounds: ν_i >= 0
-    bounds = [(None, None)] * n + [(0, None)] * n
+    bounds = [(0, None)] * n  
 
     # Solve LP
     res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
 
     if res.success:
-        a_corrected = res.x[:n]  # Extract corrected a
-        nu_values = res.x[n:]  # Extract slack variables ν
-        return a_corrected, nu_values
+        return res.x  # Return optimal ν values
     else:
         raise ValueError("LP correction failed!")
 
@@ -189,8 +190,11 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
     a_opt = a_opt.flatten()
     
     # TODO Correct matrix H_{t-1} with the multipliers nu
-    a_opt = solve_lp_correction(a_opt)
-    
+    if np.any(a_opt) < 0:
+        nu_values = solve_lp_correction(a_opt)
+        a_corrected = a_opt + nu_values
+        return a_corrected
+        
     return a_opt
 
 
