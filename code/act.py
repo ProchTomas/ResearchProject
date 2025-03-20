@@ -96,35 +96,39 @@ def update_X(N, rho, A_hat_t, X_now):
     return X_new
 
 
-def solve_lp_correction(a_star):
-    """Solve the LP with the complementarity constraint a^T nu = 0."""
-    
-    n = len(a_star)
-    
-    # Objective function: minimize sum of slack variables (1^T ν)
-    c = np.ones(n)
+def solve_lp(a):
+    """
+    Linear program to push the solution into a plane, where a >= 0.
+    Args:
+        a: a_opt from solving the equality constrained problem
+    Returns:
+        slack variable nu
+    """
+    n = len(a)
 
-    # Inequality constraint: a + ν >= 0  (rewritten as -a - ν <= 0)
-    A_ub = -np.eye(n)
-    b_ub = a_star
+    # Objective function: minimize ||nu|| (L2 norm)
+    def objective(nu):
+        return np.linalg.norm(nu)
 
-    # Equality constraints:
-    A_eq = np.vstack([
-        np.ones(n),  # sum(a + ν) = 1
-        a_star       # a^T ν = 0 (complementarity condition)
-    ])
-    b_eq = np.array([1, 0])
+    # Equality constraint: 1^T (a + nu) = 1 -> 1^T nu = 1 - 1^T a
+    constraints = [{
+        'type': 'eq',
+        'fun': lambda nu: np.sum(nu) - (1 - np.sum(a))
+    }]
 
-    # Bounds: ν_i >= 0
-    bounds = [(0, None)] * n  
+    # Inequality constraint: a + nu >= 0 -> nu >= -a
+    bounds = [(-ai, None) for ai in a]
 
-    # Solve LP
-    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, bounds=bounds, method="highs")
+    # Initial guess
+    nu0 = np.zeros(n)
+
+    # Solve the optimization problem
+    res = minimize(objective, nu0, bounds=bounds, constraints=constraints)
 
     if res.success:
-        return res.x  # Return optimal ν values
+        return res.x
     else:
-        raise ValueError("LP correction failed!")
+        raise ValueError("Optimization problem could not be solved.")
 
 
 def action_generation(N, rho, x, X_now, Y, Q, A, h):
@@ -189,12 +193,11 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
     a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lbd * ones)
     a_opt = a_opt.flatten()
     
-    # TODO Correct matrix H_{t-1} with the multipliers nu
-    if np.any(a_opt) < 0:
-        nu_values = solve_lp_correction(a_opt)
+    if np.any(a_opt) < 0: # If the constraint a >= is not satisfied
+        nu_values = solve_lp(a_opt)
         a_corrected = a_opt + nu_values
         return a_corrected
-        
+    # Otherwise return the optimal action
     return a_opt
 
 
