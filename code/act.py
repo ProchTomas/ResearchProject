@@ -47,22 +47,29 @@ def find_optimal_actions(data, cost, N):
     return result.x.reshape((num_actions, N))
 
 
-def initialize_matrices_for_Ricatti_reccursion(N, rho, tr_costs):
+def initialize_matrices_for_Ricatti_reccursion(N, rho, tr_costs, S):
     """Function to construct matrices for the Ricatti reccursion
 
     Args:
         N: number of assets
         rho: dimension of the regressor
         tr_costs: transactions costs
+        S: how far back do we look
     Returns:
         Initial matrices X, Y, D and the square root of loss matrix Q
     """
     
     # x_t = X_tx_t-1 + Ya_t
-    # TODO initialize X properly after the structure of F is decided
     X = np.zeros((2*N+rho, 2*N+rho))
     X[N:2*N, :N] = np.eye(N)
-    X[3*N:, 2*N:N+rho] = np.eye(rho - N)
+    B = np.zeros((rho - N, rho))
+    B[:N*(S-1), :N*(S-1)] = np.eye(N*(S-1))
+    B[N*(S-1):N*(S-1)+N*S, N*S:N*S+N*S] = np.eye(N*S)
+    B[-1, -1] = 1
+    B[N*(S-1) + N*S:2*N*S, :N*S] = 1/S * np.dot(np.ones(N).reshape(-1, 1), np.ones(N*S).reshape(1, -1))
+    B[2*N*S:2*N*S + N, 2*N*S + N:2*N*S + N +N] = np.eye(N)
+
+    X[3 * N:, 2 * N:] = B
 
     Y = np.zeros((2*N + rho, N))
     Y[:N, :N] = np.eye(N)
@@ -90,7 +97,6 @@ def update_X(N, rho, A_hat_t, X_now):
         X_now: x updating matrix
     Returns: updated matrix X
     """
-    # TODO include matrix F for regressors update
     X_new = X_now
     X_new[2*N:3*N, 2*N:2*N + rho] = A_hat_t
     return X_new
@@ -193,12 +199,13 @@ def action_generation(N, rho, x, X_now, Y, Q, A, h):
     a_opt = - H_a_inv @ (H_x @ x.reshape(-1, 1) + lbd * ones)
     a_opt = a_opt.flatten()
     
-    if np.any(a_opt) < 0: # If the constraint a >= is not satisfied
+    if np.any(a_opt < 0): # If the constraint a >= is not satisfied
         nu_values = solve_lp(a_opt)
         a_corrected = a_opt + nu_values
         return a_corrected
     # Otherwise return the optimal action
-    return a_opt
+    else:
+        return a_opt
 
 
 

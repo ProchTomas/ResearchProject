@@ -232,7 +232,7 @@ def softmax_selection(likelihoods):
     return np.random.choice(len(likelihoods), p=probabilities)
 
 
-def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=1.5*1e3, decay_rate=0.995):
+def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2*1e3, decay_rate=0.995):
     """
     Algorithm for approximating the optimal structure for regression
     A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure

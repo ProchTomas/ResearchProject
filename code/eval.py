@@ -33,7 +33,6 @@ def plot_reward(actions, data, costs):
         data: data array
         costs: transaction costs
     """
-    # TODO Plot gained reward against different strategies and benchmark and color them
     
     rewards = reward(actions, data, costs)
     time = np.arange(len(rewards))
@@ -62,7 +61,6 @@ def residual_plots(predictions, residuals):
         plt.xlabel(f'Predicted values (Dimension {i + 1})')
         plt.ylabel(f'Residuals (Dimension {i + 1})')
         plt.title(f'Residuals vs Predicted (Dimension {i + 1})')
-        plt.yscale('log') # log scale if some residual values are too big
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)
         plt.show()
 
@@ -97,12 +95,44 @@ def residuals_time_plots(residuals):
     # Plot the norm of residuals over time
     plt.figure(figsize=(8, 4))
     plt.plot(time, residual_norm, marker='o', linestyle='-')
-    plt.axhline(0, color='orange', linestyle='--', linewidth=1)
+    plt.axhline(1e-2, color='orange', linestyle='--', linewidth=1)
     plt.title('Norm of Residuals Over Time')
     plt.xlabel('Time')
     plt.ylabel('Residual Norm')
     plt.show()
+
+
+def average_allocation_chart(actions, tickers, window):
+    """Plots average allocation for the past n trading days
+    Args:
+        actions: array of actions (allocation)
+        tickers: array of ticker symbols
+        window: past n trading days
+    """
+    n = len(actions)
+    time = np.arange(len(actions))
+    rolling_avg = np.array([actions[max(0, i - window):i].mean(axis=0) for i in range(1, n+1)])
     
+    step = window
+    sampled_time = time[window-1::step]
+    sampled_allocations = rolling_avg[window-1::step]
+    
+    # Plot
+    fig, ax = plt.subplots(figsize=(10, 5))
+    bottom = np.zeros(len(sampled_time/step))
+    for i, ticker in enumerate(tickers):
+        ax.bar(sampled_time/step, sampled_allocations[:, i], bottom=bottom, label=ticker)
+        bottom += sampled_allocations[:, i]
+
+    # Labels and legend
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Avg Allocation (Past 100 Days)")
+    ax.set_title("Portfolio Allocation Over Time (100-Day Average)")
+    ax.legend(loc="upper left", bbox_to_anchor=(1,1))
+
+    plt.show()
+
+
 # TODO add list of the particular assets, overall MSE
 def performance_metrics(residuals):
     """metrics: Durbin-Watson, MSE, MAE, R2
@@ -115,23 +145,43 @@ def performance_metrics(residuals):
     
     for i in range(num_vars):
         mse = 0
-        mae = 0
         dw1 = 0
         dw2 = 0
         
+        mse += np.dot(residuals[i])
         for j in range(n):
-            mse += np.power(residuals[j][i], 2)
-            mae += np.abs(residuals[j][i])
             if 0 < j:
                 dw1 += np.power(residuals[j-1][i] - residuals[j][i], 2)
             dw2 += np.power(residuals[j][i], 2)
             
         mse /= n
-        mae /= n
         
         print(f"MSE for asset {i}: {mse}")
-        print(f"MAE for asset {i}: {mae}")
         print(f"D-W for assets {i}: {dw1 / dw2}")
         print("--------------------------------")
-    
+
+
+def max_drawdown(arr):
+    """Calculates a very important metric: The maximum draw-down the strategy experienced
+    If we only gain, it returns zero
+    Args:
+        arr: array of returns (rewards)
+    Returns:
+        Maximum draw-down
+    """
+    max_drawdown = 0
+    current_high = arr[0]
+    current_low = arr[0]
+
+    for i in range(len(arr)):
+        if arr[i] > current_high:
+            current_high = arr[i]
+            current_low = arr[i]
+        if arr[i] < current_low:
+            current_low = arr[i]
+        if 1 - current_low / current_high > max_drawdown:
+            max_drawdown = 1 - current_low / current_high
+
+    return max_drawdown    
+        
         
