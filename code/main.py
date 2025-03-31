@@ -14,7 +14,8 @@ def gather_data():
         returns and volumes to market cap
     """
     # stocks = ["GOOGL", "AAPL", "NVDA", "MSFT", "AMZN"]
-    stocks = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "JNJ", "WMT", "JPM", "PG", "VZ"]
+    stocks = ["ait", "aaon", "fix", "insm", "itci", "lnw", "mstr", "sfm", "smci", "ufpi"]
+    # stocks = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "JNJ", "WMT", "JPM", "PG", "VZ"]
     s = []
     stocks_returns = [f'c:/Users/TomasProchazka/PythonProjects/ResearchProject/stock_data/{stck}_returns.txt' for stck in stocks]
     for stck_rtrn in stocks_returns:
@@ -97,8 +98,6 @@ def build_regressor(data_returns, data_volumes, t):
     regressor = np.append(regressor, get_indicator_values(data_returns, data_volumes, t))
     regressor = np.append(regressor, 1)
     regressor = regressor.flatten()
-    # Remove certain values (structure estimation)
-    # regressor = np.delete(regressor, [-2, -4])
     return regressor
 
 
@@ -147,12 +146,12 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
         d_t = np.hstack((data_r[t], z_t))
         # update L
         
-        phi = func.opt_forgetting_factor(z_t, func.getL_z(L, nu, rho), nu, phi_init=0.95)
+        # phi = func.opt_forgetting_factor(z_t, func.getL_z(L, nu, rho), nu, phi_init=0.95)
         L = func.refill(L, d_t, phi)
         Lf = func.getL_f(L, nu)
         Lzf = func.getL_zf(L, nu, rho)
 
-        # # create the regressor
+        # # # create the regressor
         # mae_now_21 = indicators.mae(data_r[t], mae_old_21, 21)
         # mae_old_21 = mae_now_21
         # mae_now_7 = indicators.mae(data_r[t], mae_old_7, 7)
@@ -173,7 +172,7 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
         X = act.update_X(nu, rho, A_hat, X)
         x_t = np.hstack((action_t, action_prev, z_t))
         
-        action_t = act.action_generation(nu, rho, x_t, X, Y, Q, A_hat, 10)
+        action_t = act.action_generation(nu, rho, x_t, X, Y, Q, A_hat, 9)
         action_t = check_action_similarity(action_t, action_prev)
         
         action_prev = action_t
@@ -183,15 +182,55 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
     # structure_estimation = func.genetic_algorithm(L_init, L, nu, rho, t, 16)
     # print(f"Maximum likelihood of {structure_estimation[1]} has been reached with: {structure_estimation[0]}")
     # save_objects(L, structure_estimation[0])
-    # np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrixTOP5_till_now.npy', L)
+    np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrixSmallCaps.npy', L)
     return np.array(predictions), np.array(residuals), np.array(actions)
+
+
+def one_step_run(action_prev, action_before, data, z, update):
+    """
+    Args:
+        action_prev: previous action
+        action_before: action the day before (not neccessary, it will be replaced by the previous action)
+        data: newly observed data to update L (this is done after observing the new state)
+        z: regressor for the current state
+        update: if True - updates the matrix L, if False
+
+    Returns:
+        Predicts the next state, outputs the prediction and optimal action for the next step
+    """
+    L = np.load('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrix.npy')
+    
+    if update == True:
+        d_t = np.hstack((data, z))
+        phi = func.opt_forgetting_factor(z, func.getL_z(L, nu, rho), nu, phi_init=0.95)
+        L = func.refill(L, d_t, phi)
+        np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrix.npy', L)
+        print("Matrix L has been updated and saved")
+    
+    else:
+        Lf = func.getL_f(L, nu)
+        Lzf = func.getL_zf(L, nu, rho)
+        
+        t_cost = 0.002
+        X, Y, D, Q = act.initialize_matrices_for_Ricatti_reccursion(nu, rho, t_cost, 10)
+        
+        A_hat = - np.linalg.inv(Lf).T @ Lzf.T
+        pred = A_hat @ z
+        
+        X = act.update_X(nu, rho, A_hat, X)
+        x_t = np.hstack((action_prev, action_before, z))
+        action_t = act.action_generation(nu, rho, x_t, X, Y, Q, A_hat, 10)
+        action_t = check_action_similarity(action_t, action_prev)
+        
+        return pred, action_t
+    
 
 if __name__ == "__main__":
     tr_cost = 0.002
     
     data_set_returns, data_set_volumes = gather_data()
     end = len(data_set_returns) - 1
-    start = end - 5*251
+    start = end - 251
     
     nu = len(data_set_returns[0])
     reg_0 = build_regressor(data_set_returns, data_set_volumes, start)
@@ -200,7 +239,7 @@ if __name__ == "__main__":
     
     model_results = model_run(data_set_returns, data_set_volumes, reg_0, v, 0.9, nu, rho, tr_cost, start, end)
     my_actions = model_results[2]
-    # np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/action_array_smallcaps_last_year.npy', my_actions)
+    np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/action_array_smallcaps_last_year.npy', my_actions)
     #print(my_actions)
     pred_array = model_results[0]
     #print(pred_array)
@@ -224,6 +263,6 @@ if __name__ == "__main__":
     eval.residuals_time_plots(res_array)
     eval.qq_plots(res_array)
     
-    stocks = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA", "JNJ", "WMT", "JPM", "PG", "VZ"]
+    stocks = ["ait", "aaon", "fix", "insm", "itci", "lnw", "mstr", "sfm", "smci", "ufpi"]
     eval.average_allocation_chart(my_actions, stocks, 21)
     
