@@ -146,7 +146,7 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
         d_t = np.hstack((data_r[t], z_t))
         # update L
         
-        # phi = func.opt_forgetting_factor(z_t, func.getL_z(L, nu, rho), nu, phi_init=0.95)
+        phi = func.opt_forgetting_factor(z_t, func.getL_z(L, nu, rho), nu, phi_init=0.95)
         L = func.refill(L, d_t, phi)
         Lf = func.getL_f(L, nu)
         Lzf = func.getL_zf(L, nu, rho)
