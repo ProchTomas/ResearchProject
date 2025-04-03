@@ -14,8 +14,9 @@ def gather_data():
         returns and volumes to market cap
     """
     # stocks = ["GOOGL", "AAPL", "NVDA", "MSFT", "AMZN"]
-    stocks = ["ait", "aaon", "fix", "insm", "itci", "lnw", "mstr", "sfm", "smci", "ufpi"]
+    # stocks = ["ait", "aaon", "fix", "insm", "itci", "lnw", "mstr", "sfm", "smci", "ufpi"]
     # stocks = ["AAPL", "MSFT", "AMZN", "GOOGL", "META", "JNJ", "WMT", "JPM", "PG", "VZ"]
+    stocks = ["GS", "UNH", "MSFT", "HD", "CAT", "SHW", "CRM", "PEP", "AXP", "MCD", "AMGN", "JPM", "IBM", "TRV", "AAPL", "AMZN", "HON", "BA", "PG", "CVX", "MMM", "JNJ", "NVDA", "DIS", "MRK", "WMT", "NKE", "CSCO", "VZ"]
     s = []
     stocks_returns = [f'c:/Users/TomasProchazka/PythonProjects/ResearchProject/stock_data/{stck}_returns.txt' for stck in stocks]
     for stck_rtrn in stocks_returns:
@@ -119,7 +120,7 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
     """
     z_t = z_init
     L = np.linalg.inv(V_init)
-    # L = np.load('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrix.npy')
+    # L = np.load('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrixSmallCaps.npy')
     # reduction = np.load('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/best_regressor_subset.npy')
     # reduction = np.insert(reduction, 0, np.ones(nu))
     # L = func.reduce_matrix(L, reduction)
@@ -137,6 +138,7 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
     actions = []
     mae_old_21 = np.zeros(nu)
     mae_old_7 = np.zeros(nu)
+    phi_array = []
     
     for t in range(start, end):
         print(t)
@@ -147,6 +149,7 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
         # update L
         
         phi = func.opt_forgetting_factor(z_t, func.getL_z(L, nu, rho), nu, phi_init=0.95)
+        phi_array.append(phi)
         L = func.refill(L, d_t, phi)
         Lf = func.getL_f(L, nu)
         Lzf = func.getL_zf(L, nu, rho)
@@ -182,7 +185,9 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
     # structure_estimation = func.genetic_algorithm(L_init, L, nu, rho, t, 16)
     # print(f"Maximum likelihood of {structure_estimation[1]} has been reached with: {structure_estimation[0]}")
     # save_objects(L, structure_estimation[0])
-    np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrixSmallCaps.npy', L)
+    np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/regression_matrixDJI.npy', L)
+    plt.plot(phi_array)
+    plt.show()
     return np.array(predictions), np.array(residuals), np.array(actions)
 
 
@@ -239,7 +244,7 @@ if __name__ == "__main__":
     
     model_results = model_run(data_set_returns, data_set_volumes, reg_0, v, 0.9, nu, rho, tr_cost, start, end)
     my_actions = model_results[2]
-    np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/action_array_smallcaps_last_year.npy', my_actions)
+    np.save('c:/Users/TomasProchazka/PythonProjects/ResearchProject/saved/action_array_DJI.npy', my_actions)
     #print(my_actions)
     pred_array = model_results[0]
     #print(pred_array)
@@ -263,6 +268,6 @@ if __name__ == "__main__":
     eval.residuals_time_plots(res_array)
     eval.qq_plots(res_array)
     
-    stocks = ["ait", "aaon", "fix", "insm", "itci", "lnw", "mstr", "sfm", "smci", "ufpi"]
+    stocks = ["GS", "UNH", "MSFT", "HD", "CAT", "SHW", "CRM", "PEP", "AXP", "MCD", "AMGN", "JPM", "IBM", "TRV", "AAPL", "AMZN", "HON", "BA", "PG", "CVX", "MMM", "JNJ", "NVDA", "DIS", "MRK", "WMT", "NKE", "CSCO", "VZ"]
     eval.average_allocation_chart(my_actions, stocks, 21)
     

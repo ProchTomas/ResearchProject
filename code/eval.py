@@ -126,8 +126,8 @@ def average_allocation_chart(actions, tickers, window):
 
     # Labels and legend
     ax.set_xlabel("Time")
-    ax.set_ylabel("Avg Allocation (Past 100 Days)")
-    ax.set_title("Portfolio Allocation Over Time (100-Day Average)")
+    ax.set_ylabel(f"Avg Allocation (Past {window} Days)")
+    ax.set_title(f"Portfolio Allocation Over Time ({window}-Day Average)")
     ax.legend(loc="upper left", bbox_to_anchor=(1,1))
 
     plt.show()
