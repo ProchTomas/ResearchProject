@@ -63,6 +63,7 @@ def initialize_matrices_for_Ricatti_reccursion(N, rho, tr_costs, S):
     X = np.zeros((2*N+rho, 2*N+rho))
     X[N:2*N, :N] = np.eye(N)
     B = np.zeros((rho - N, rho))
+    # The matrix B is currently initialized as presented in the thesis, for the estimated structure.
     B[:N*(S-1), :N*(S-1)] = np.eye(N*(S-1))
     B[N*(S-1):N*(S-1)+N*S, N*S:N*S+N*S] = np.eye(N*S)
     B[-1, -1] = 1
