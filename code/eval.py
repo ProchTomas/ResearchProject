@@ -36,16 +36,18 @@ def plot_reward(actions, data, costs):
     
     rewards = reward(actions, data, costs)
     time = np.arange(len(rewards))
-    plt.plot(time, rewards, label=f'cumulative gain', marker='o')
-    plt.title('Returns')
+    plt.figure(figsize=(8, 4))
+    plt.plot(time, rewards, label='Cumulative Gain', color='black', marker='o', markersize=4)
+    plt.title('Cumulative Returns Over Time', fontsize=14)
     plt.xlabel('Time')
-    plt.ylabel('returns')
+    plt.ylabel('Cumulative Gain')
     plt.legend()
+    plt.tight_layout()
     plt.show()
     
 
 
-def residual_plots(predictions, residuals):
+def residual_plots(predictions, residuals, tickers):
     """Create residual plots
     residuals against predicted values
 
@@ -58,14 +60,14 @@ def residual_plots(predictions, residuals):
     for i in range(num_vars):
         plt.figure()
         plt.scatter(predictions[:, i], residuals[:, i])
-        plt.xlabel(f'Predicted values (Dimension {i + 1})')
-        plt.ylabel(f'Residuals (Dimension {i + 1})')
-        plt.title(f'Residuals vs Predicted (Dimension {i + 1})')
+        plt.xlabel(f'Predicted values {tickers[i]}')
+        plt.ylabel(f'Residuals {tickers[i]}')
+        plt.title(f'Residuals vs Predicted {tickers[i]}')
         plt.grid(True, which='both', linestyle='--', linewidth=0.5)
         plt.show()
 
 
-def qq_plots(residuals):
+def qq_plots(residuals, tickers):
     """QQ plots
 
     Args:
@@ -74,10 +76,23 @@ def qq_plots(residuals):
     num_vars = residuals.shape[1]
 
     for i in range(num_vars):
-        plt.figure()
-        stats.probplot(residuals[:, i], dist="norm", plot=plt)
-        plt.title(f'Q-Q Plot (Dimension {i + 1})')
-        plt.grid(True, linestyle="--", linewidth=0.5)
+        fig, ax = plt.subplots(figsize=(6, 6))
+        stats.probplot(residuals[:, i], dist="norm", plot=ax)
+
+        # Style line and points
+        line = ax.get_lines()[1]
+        points = ax.get_lines()[0]
+        line.set_color("#555555")
+        line.set_linestyle("--")
+        points.set_markerfacecolor("#333333")
+        points.set_alpha(0.7)
+
+        ax.set_title(f'Q-Q Plot: {tickers[i]}', fontsize=14)
+        ax.set_xlabel("Theoretical Quantiles")
+        ax.set_ylabel("Sample Quantiles")
+        ax.grid(True, linestyle="--", linewidth=0.5)
+
+        plt.tight_layout()
         plt.show()
     
 
@@ -184,4 +199,27 @@ def max_drawdown(arr):
 
     return max_drawdown    
         
-        
+
+def plot_multiple_rewards(actions_list, data, costs, labels):
+    """
+    Plot cumulative returns for multiple action strategies.
+    
+    Args:
+        actions_list: list of action arrays
+        data: data array
+        costs: transaction costs
+        labels: optional list of labels for each strategy
+    """
+    plt.figure(figsize=(8, 4))
+
+    for i, actions in enumerate(actions_list):
+        rewards = reward(actions, data, costs)
+        label = labels[i]
+        plt.plot(rewards, label=label, marker='o', markersize=2)
+
+    plt.title('Cumulative Returns', fontsize=14)
+    plt.xlabel('Time')
+    plt.ylabel('Cumulative Gain')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()

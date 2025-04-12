@@ -194,7 +194,7 @@ def get_likelihood(det_Vzk_init, det_Lambda_init, det_Vzk, det_Lambda, x, z, t):
     # This could perhaps be optimized by precomputing the differences for det_Lambda
     for j in range(x):
         likelihood += gammaln((delta_t - z + x + 2 - j) / 2) - gammaln((delta_0 - z + x + 1 - j) / 2)
-    likelihood -= x / 2 * (np.log(det_Vzk) - np.log(det_Vzk_init)) - (delta_t - z + x + 2) / 2 * np.log(det_Lambda) + (delta_0 - z + x + 1) / 2 * np.log(det_Lambda_init)
+    likelihood += - x / 2 * (np.log(det_Vzk) - np.log(det_Vzk_init)) - (delta_t - z + x + 2) / 2 * np.log(det_Lambda) + (delta_0 - z + x + 1) / 2 * np.log(det_Lambda_init)
     
     return likelihood
 
@@ -232,7 +232,7 @@ def softmax_selection(likelihoods):
     return np.random.choice(len(likelihoods), p=probabilities)
 
 
-def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2*1e3, decay_rate=0.995):
+def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.2, max_iter=2*1e3, decay_rate=0.998):
     """
     Algorithm for approximating the optimal structure for regression
     A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure
@@ -250,7 +250,7 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2*1e3
         tuple of (parent, the highest likelihood value achieved)
     """
     
-    print(f"Running structure estimation, p_mut = {p_mut}, max_iter = {max_iter}, size of searched space: {2**y}")
+    print(f"Running structure estimation, p_mut = {p_mut}, max_iter = {max_iter}, size of searched space: 2^{y}")
     
     # STEP 0: Initialize the matrices and their determinants for the initial state, possibly save and load these for very large matrices
     Lf_init = getL_f(L_init, x)
