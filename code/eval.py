@@ -18,13 +18,12 @@ def reward(actions, data, costs):
     for i in range(len(data)):
         transaction_costs = 0
         for j in range(len(actions[0])):
-            if i-1 >= 0:
+            if i-1 >= 0: # we consider the first allocation to be uniform
                 transaction_costs += costs * np.abs(actions[i][j] - actions[i-1][j])
             else:
                 actions[i-1][j] = 1/len(actions[0])
                 transaction_costs += costs * np.abs(actions[i][j] - actions[i-1][j])
         utility += np.log(1 + data[i].T @ actions[i]) + np.log(1 - transaction_costs)
-        print(f"previous action: {actions[i-1]}")
         r.append(np.exp(utility))
     return np.array(r)
 
