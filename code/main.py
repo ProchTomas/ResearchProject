@@ -103,7 +103,7 @@ def build_regressor(data_returns, data_volumes, t, mae1, mae2):
     return regressor
 
 
-def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
+def model_run(data_r, data_v, z_init, V_init, phi_init, nu, rho, t_cost, start, end):
     """Runs the model on past data
     Args:
         data_r: data set returns
@@ -145,12 +145,11 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
     
     mae_old_21 = np.zeros(nu)
     mae_old_7 = np.zeros(nu)
+    phi = phi_init
     
     for t in range(start, end):
         # update L
         d_t = np.hstack((data_r[t], z_t))
-        
-        phi = func.opt_forgetting_factor(z_t, func.getL_z(L, nu, rho), nu, phi_init=0.95)
 
         L = func.refill(L, d_t, phi)
         Lf = func.getL_f(L, nu)
@@ -172,7 +171,8 @@ def model_run(data_r, data_v, z_init, V_init, phi, nu, rho, t_cost, start, end):
         predictions.append(pred)
         residuals.append(e_hat)
         z_t = z_t1
-        
+
+        phi = func.opt_forgetting_factor(func.getL_z(L, nu, rho), func.getL_f(L, nu), e_hat, z_t, nu, rho, delta, phi_init)
         # actions
         X = act.update_X(nu, rho, A_hat, X)
         x_t = np.hstack((action_t, action_prev, z_t))
