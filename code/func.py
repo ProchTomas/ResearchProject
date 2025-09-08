@@ -2,8 +2,6 @@ import math
 import numpy as np
 from scipy.special import gammaln
 import func
-import matplotlib.pyplot as plt
-import os
 
 
 def householder_transform(input_matrix):
@@ -45,8 +43,8 @@ def get_g(i, j, l, data):
     return np.sum(l[j:i, j] * [get_f(k, l, data) for k in range(j, i)])
 
 
-def refill(l, data, phi):
-    """ update matrix L
+def refill(l, data, phi): # old implementation
+    """ update matrix L - older legacy functions
 
     Args:
         l: previous L
@@ -130,12 +128,6 @@ def get_det_Lz(Lz):
         det *= Lz[j][j]
     return det
 
-def get_log_det_Lz(Lz):
-    det = 0 
-    for j in range(len(Lz)):
-        det += np.log(np.power(Lz[j][j], 2))
-    return det
-
 
 def get_det_Lf(Lf):
     """Computes the determinant as a product of diagonal elements
@@ -150,13 +142,6 @@ def get_det_Lf(Lf):
         det *= Lf[j][j]
     return det
 
-def get_log_det_Lf(Lf):
-    det = 0 
-    for j in range(len(Lf)):
-        det += np.log(np.power(Lf[j][j], 2))
-    return det
-
-
 
 def get_det_Vzk(Lzk):
     """Takes in Lzk and computes the determinant of Vzk within this function
@@ -167,7 +152,7 @@ def get_det_Vzk(Lzk):
     """
     det_Lzk = get_det_Lz(Lzk)
     # Handle small determinants to override the division by zero issue (does not happen too often)
-    epsilon = 1e-10
+    epsilon = 1e-12
     safe_det_Lzk = np.maximum(det_Lzk, epsilon)
     
     det_Vzk = np.power(safe_det_Lzk, -2)
@@ -186,7 +171,7 @@ def get_det_Lambda(Lf):
     return det_Lambda
 
 
-def get_likelihood(log_det_Lzk_init, log_det_Lf_init, log_det_Lzk, log_det_Lf, x, z, t):
+def get_likelihood(det_Vzk_init, det_Lambda_init, det_Vzk, det_Lambda, x, z, t):
     """
     Args:
         det_Vzk_init: determinant of initial Vzk
@@ -200,7 +185,7 @@ def get_likelihood(log_det_Lzk_init, log_det_Lf_init, log_det_Lzk, log_det_Lf, x
         likelihood value
     """
     
-    delta_0 = 20 + z
+    delta_0 = 10 + z
     delta_t = delta_0 + t
     
     likelihood = 0
@@ -209,10 +194,8 @@ def get_likelihood(log_det_Lzk_init, log_det_Lf_init, log_det_Lzk, log_det_Lf, x
     # This could perhaps be optimized by precomputing the differences for det_Lambda
     for j in range(x):
         likelihood += gammaln((delta_t - z + x + 2 - j) / 2) - gammaln((delta_0 - z + x + 1 - j) / 2)
-
-    # likelihood += x/2 * np.log(np.power(det_Lzk, 2)) - x/2 * np.log(np.power(det_Lzk_init, -2)) + (delta_t - z + x + 2) / 2 * np.log(np.power(det_Lf, 2)) - (delta_0 - z + x + 1) / 2 * np.log(np.power(det_Lf_init, 2))
-    likelihood += x/2 * log_det_Lzk - x/2 * log_det_Lzk_init + (delta_t - z + x + 2) / 2 * log_det_Lf - (delta_0 - z + x + 1) / 2 * log_det_Lf_init
-
+    likelihood += - x / 2 * (np.log(det_Vzk) - np.log(det_Vzk_init)) - (delta_t - z + x + 2) / 2 * np.log(det_Lambda) + (delta_0 - z + x + 1) / 2 * np.log(det_Lambda_init)
+    
     return likelihood
 
 
@@ -249,7 +232,7 @@ def softmax_selection(likelihoods):
     return np.random.choice(len(likelihoods), p=probabilities)
 
 
-def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2e3, decay_rate=0.998):
+def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.2, max_iter=2*1e3, decay_rate=0.998):
     """
     Algorithm for approximating the optimal structure for regression
     A simple implementation of a stochastic genetic algorithm search for optima for highly unpredictable structure
@@ -272,25 +255,24 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2e3, 
     # STEP 0: Initialize the matrices and their determinants for the initial state, possibly save and load these for very large matrices
     Lf_init = getL_f(L_init, x)
     Lz_init = getL_z(L_init, x, y)
-    log_det_Lf_init = get_log_det_Lf(Lf_init)
-    log_det_Lz_init = 0
+    det_Lambda_init = get_det_Lambda(Lf_init)
+    det_Vz_init = get_det_Vzk(Lz_init)
     
     # Get the submatrices of current matrix L and their determinants
     Lz = getL_z(L, x, y)
     Lf = getL_f(L, x)
-    log_det_Lz = get_log_det_Lz(Lz)
-    log_det_Lf = get_log_det_Lf(Lf) # This is going to be the same for all model versions
+    
+    det_Vz = get_det_Vzk(Lz)
+    det_Lambda = get_det_Lambda(Lf) # This is going to be the same for all model versions
     
     # STEP 1: Initialize parent and its likelihood
     
     parent = np.ones(y) # Initialize the parent, corresponding to the full model
     
-    Likelihood_max = get_likelihood(log_det_Lz_init, log_det_Lf_init, log_det_Lz, log_det_Lf, x, y, t) # Set the maximum likelihood as likelihood for the full model
-
-    no_improvement_count = 700
+    Likelihood_max = get_likelihood(det_Vz_init, det_Lambda_init, det_Vz, det_Lambda, x, y, t) # Set the maximum likelihood as likelihood for the full model
+    
+    no_improvement_count = 0
     iteration = 0
-    pop_history = []
-    ll_history = []
     
     while iteration < max_iter:
         # STEP 2: Itroduce mutations and select the best sub-model
@@ -299,17 +281,16 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2e3, 
         
         for mutated in mutations:
             Lz_mut = reduce_matrix(Lz, mutated)
-            # Lz_mut_init = reduce_matrix(Lz_init, mutated)
+            Lz_mut_init = reduce_matrix(Lz_init, mutated)
             
-            Lz_mut = householder_transform(Lz_mut)
-            # Lz_mut_init = householder_transform(Lz_mut_init)
+            Lz_mut = func.householder_transform(Lz_mut)
+            Lz_mut_init = func.householder_transform(Lz_mut_init)
             
-            log_det_Lz_mut = get_log_det_Lz(Lz_mut)
-            # det_Lz_mut_init = get_det_Lz(Lz_mut_init)
-            log_det_Lz_mut_init = 0
+            det_Vz_mut = get_det_Vzk(Lz_mut)
+            det_Vz_mut_init = get_det_Vzk(Lz_mut_init)
             
             z_mut = np.sum(mutated)
-            likelihood = get_likelihood(log_det_Lz_mut_init, log_det_Lf_init, log_det_Lz_mut, log_det_Lf, x, z_mut, t)
+            likelihood = get_likelihood(det_Vz_mut_init, det_Lambda_init, det_Vz_mut, det_Lambda, x, z_mut, t)
             # likelihoods.append((likelihood, mutated))
             
             # For soft-max selection
@@ -325,126 +306,73 @@ def genetic_algorithm(L_init, L, x, y, t, batch_size, p_mut=0.15, max_iter=2e3, 
         offspring = crossover(best_mutation, parent)
 
         Lz_offspring = reduce_matrix(Lz, offspring)
-        # Lz_offspring_init = reduce_matrix(Lz_init, offspring)
+        Lz_offspring_init = reduce_matrix(Lz_init, offspring)
 
-        Lz_offspring = householder_transform(Lz_offspring)
-        # Lz_offspring_init = householder_transform(Lz_offspring_init)
+        Lz_offspring = func.householder_transform(Lz_offspring)
+        Lz_offspring_init = func.householder_transform(Lz_offspring_init)
 
-        log_det_Lz_offspring = get_log_det_Lz(Lz_offspring)
-        # det_Lz_offspring_init = get_det_Lz(Lz_offspring_init)
-        log_det_Lz_offspring_init = 0
+        det_Vz_offspring = get_det_Vzk(Lz_offspring)
+        det_Vz_offspring_init = get_det_Vzk(Lz_offspring_init)
+        
         z_offspring = np.sum(offspring)
         
-        Likelihood_offspring = get_likelihood(log_det_Lz_offspring_init, log_det_Lf_init, log_det_Lz_offspring, log_det_Lf, x, z_offspring, t)
+        Likelihood_offspring = get_likelihood(det_Vz_offspring_init, det_Lambda_init, det_Vz_offspring, det_Lambda, x, z_offspring, t)
         
         # STEP 4: Evaluate offspring
         if Likelihood_offspring > Likelihood_max:
-            print("change of parents to offspring")
             parent = offspring
             Likelihood_max = Likelihood_offspring
-        else: 
+            no_improvement_count = 0
+        else:
+            no_improvement_count += 1
             parent = best_mutation
-            
+        
         p_mut *= decay_rate
         iteration += 1
         
         if iteration % 100 == 0:
             print(f"Iteration {iteration}, Current Max Likelihood: {Likelihood_max}")
-            pop_history.append(np.array(mutations))
-            ll_history.append(np.array(likelihoods))
-
-
-    n_iters = len(ll_history)
-    pop_size = len(ll_history[0])
-    n_features = pop_history[0].shape[1]
-
-    # --- Prepare data ---
-    flat_pop = np.vstack(pop_history)  # shape: (n_iters * pop_size, n_features)
-    xticks = np.arange(n_iters) * 100
-    xtick_positions = np.arange(pop_size // 2, pop_size * n_iters, pop_size)
-    ll_array = np.array(ll_history)
-
-    # --- Plot setup ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), sharex=False, gridspec_kw={'height_ratios': [1, 1.5]})
-
-    # --- Top: Likelihoods ---
-    for i in range(n_iters):
-        ax1.scatter([i * 100] * pop_size, ll_array[i], color='tab:blue', alpha=0.7)
-    ax1.set_ylabel("Log-Likelihood")
-    ax1.set_title("Population Likelihoods Over Time")
-    ax1.grid(True)
-
-    # --- Bottom: Binary Population Heatmap ---
-    # Transpose to shape (features, time points)
-    ax2.imshow(flat_pop.T, aspect='auto', cmap='Greys', interpolation='nearest')
-    ax2.set_ylabel("Regressor Index")
-    ax2.set_xlabel("Generation (every 100th iter)")
-    ax2.set_title("Population Feature Selection")
-
-    ax2.set_xticks(xtick_positions)
-    ax2.set_xticklabels(xticks)
-
-    plt.tight_layout()
-    folder = "saved"
-    file_name = "likelihood_plots.pdf"
-    file_path = os.path.join(folder, file_name)
-
-    plt.savefig(file_path, format="pdf", dpi=300)
-
     
     # parent contains the information about which regressors maximize the likelihood
-
-
     return parent, Likelihood_max
 
 
-def F_phi(p_init, p, v, l, N, rho, delta):
-    det_v = 0
-    det_l = 0
-    f_value = 0
-
-    for i in range(len(v[0])):
-        det_v += np.log(np.power(v[i][i], 2))
-
-    for j in range(len(l[0])):
-        det_l += np.log(np.power(l[j][j], 2))
-        f_value -= gammaln((delta + N + p + 2 - 2*rho - j)/2)
-
-    f_value += p * np.log(p / p_init) + (1 - p) * np.log((1 - p) / (1 - p_init)) + N/2 * det_v + (delta + N + p + 1 - 2*rho)/2 * det_l
-    f_value -= N*p/2*np.log(2)
-
+def F_phi(p_init, p, m, N):
+    det_m = 0
+    for i in range(len(m[0])):
+        det_m += np.log(np.power(m[i][i], 2))
+    f_value = p * np.log(p / p_init) + (1 - p) * np.log((1 - p) / (1 - p_init)) + N/2 * det_m
     return f_value
 
 
 # Simpler version
-def V_phi(L_z, z, p):
-    v_square_root = np.block([[np.sqrt(p) * z.T], [np.linalg.inv(L_z)]])
-    v = householder_transform(v_square_root)
-    return v
+# def M_phi(L_z, z, p):
+#     m_square_root = np.block([[np.sqrt(p) * z.T], [np.linalg.inv(L_z)]])
+#     m = householder_transform(m_square_root)
+#     return m
 
-def Lambda_phi(L_f, e, p, zeta):
-    Lambda_square_root = np.block([[np.sqrt(p/(1+zeta)) * e.T], [np.linalg.inv(L_f)]])
-    Lambda = householder_transform(Lambda_square_root)
-    return Lambda
+def M_phi(lz1, lz2, p):
+    # Simpler case, where lz1 = z_t
+    if lz1.ndim == 1:
+        m_square_root = np.block([[np.sqrt(p) * lz1], [np.sqrt(1-p) * np.linalg.inv(lz2)]])
+    # General case
+    else:
+        m_square_root = np.block([[np.sqrt(p) * np.linalg.inv(lz1)], [np.sqrt(1-p) * np.linalg.inv(lz2)]])
+    m = householder_transform(m_square_root)
+    return m
 
 
-def opt_forgetting_factor(L_z1, L_f1, e_t, z_t, N, rho, delta, phi_init, a=0, b=1, tol=1e-4):
+def opt_forgetting_factor(L_z1, L_z2, N, phi_init, a=0, b=1, tol=1e-6):
     """
     Golden section search algorithm to find the optimal forgetting factor.
     Args:
-        L_z1: submatrix of current L
-        L_f1: submatrix of current L
-        e_t: error
-        z_t: current regression vector
-        N: dimension of data
-        rho: dimension of z_t
-        delta: time statistics
+        L_z1: submatrix of current L, replace with L_z of previous L for the simpler version
+        L_z2: submatrix of reference L, replace with current regressor for the simpler version
+        N: dimension of data - nu
         phi_init: initial guess for the optimal forgetting factor
     Returns:
         optimal forgetting factor at for the contemporary data
     """
-    Zeta = z_t.T @ np.linalg.inv(L_z1).T @ np.linalg.inv(L_z1) @ z_t
-
     gr = (1 + 5 ** 0.5) / 2
 
     # Calculate initial test points
@@ -452,8 +380,8 @@ def opt_forgetting_factor(L_z1, L_f1, e_t, z_t, N, rho, delta, phi_init, a=0, b=
     d = a + (b - a) / gr
 
     # Evaluate function at test points
-    fc = F_phi(phi_init, c, V_phi(L_z1, z_t, c), Lambda_phi(L_f1, e_t, c, Zeta), N, rho, delta)
-    fd = F_phi(phi_init, d, V_phi(L_z1, z_t, d), Lambda_phi(L_f1, e_t, d, Zeta), N, rho, delta)
+    fc = F_phi(phi_init, c, M_phi(L_z1, L_z2, c), N)
+    fd = F_phi(phi_init, d, M_phi(L_z1, L_z2, d), N)
 
     while abs(b - a) > tol:
         if fc < fd:
@@ -462,15 +390,59 @@ def opt_forgetting_factor(L_z1, L_f1, e_t, z_t, N, rho, delta, phi_init, a=0, b=
             d = c
             fd = fc
             c = b - (b - a) / gr
-            fc = F_phi(phi_init, c, V_phi(L_z1, z_t, c), Lambda_phi(L_f1, e_t, d, Zeta), N, rho, delta)
+            fc = F_phi(phi_init, c, M_phi(L_z1, L_z2, c), N)
         else:
             # Minimum is in [c, b]
             a = c
             c = d
             fc = fd
             d = a + (b - a) / gr
-            fd = F_phi(phi_init, d, V_phi(L_z1, z_t, d), Lambda_phi(L_f1, e_t, d, Zeta), N, rho, delta)
+            fd = F_phi(phi_init, d, M_phi(L_z1, L_z2, d), N)
 
     # Return midpoint of final interval
     x = (a + b) / 2
     return x
+
+
+def refil(G_t, z_t1, phi):
+    """implementation of the REFIL algorithm from Peterka
+    Args:
+        G_t (np.ndarray): The current upper triangular matrix G(t), where G(t)G(t)^T = V(t)^-1.
+        z_t1 (np.ndarray): The new data vector z(t+1).
+        phi (float): The exponential forgetting factor.
+
+    Returns:
+        np.ndarray: The updated upper triangular matrix G(t+1).
+    """
+    rho = G_t.shape[0]
+    G_t1 = np.zeros((rho, rho))
+
+    # sigma_sq = phi**2 # old where V_t = phi*V_t-1 + d_td_t^T
+    sigma_sq = 1
+    g = np.zeros(rho)
+
+    for j in range(rho):
+        # f_j = np.dot(G_t[:j+1, j], z_t1[:j+1]) # old
+        f_j = np.sqrt(phi) * np.dot(G_t[:j+1, j], z_t1[:j+1])
+        
+        sigma_sq_prev = sigma_sq
+        sigma_prev = np.sqrt(sigma_sq_prev)
+        
+        sigma_sq = sigma_sq_prev + f_j**2
+        sigma = np.sqrt(sigma_sq)
+        
+        c = sigma_prev / sigma
+        
+        G_t1[j, j] = c * G_t[j, j]
+        
+        g_helper_j = G_t[j, j] * f_j
+        
+        for i in range(j):
+            d = G_t[i, j]
+            b = f_j / sigma_sq_prev if sigma_sq_prev > 0 else 0
+            G_t1[i, j] = c * (d - b * g[i])
+            g[i] = d * f_j + g[i]
+
+        g[j] = g_helper_j
+        
+    return G_t1
