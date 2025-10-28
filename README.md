@@ -1,1 +1,1 @@
-My private repository for Research Project: Tools for Dynamic Portfolio Optimization
+My private repository for Research Project: Adaptive portfolio optimization
