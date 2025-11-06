@@ -131,7 +131,7 @@ def model_run(t_0, terminal_time, y, x, V_prior, G_prior, delta_0, alpha_0, beta
         Q_sqrt = act.get_loss_matrix(N, rho, D, sigma, omega)
         A = act.update_evolution_matrix(N, rho, P, X, A)
         s_t = np.hstack((actions[-1], np.zeros(N), y_hat, x[t]))
-        a_t = act.action_generation(N, rho, s_t, B, Q_sqrt, A, 2)
+        a_t = act.action_generation(N, rho, s_t, B, Q_sqrt, A, 10, P, Gxx, np.linalg.inv(sigma), False)
         actions.append(a_t)
         # print("action for: ", y[t], "is: ", a_t, "estimated y: ", y_hat)
         tr_c = 0
@@ -150,9 +150,9 @@ def model_run(t_0, terminal_time, y, x, V_prior, G_prior, delta_0, alpha_0, beta
     return m_dd, var_r, avg_r
 
 
-if __name__ == "__main_wandb__":
+if __name__ == "__main__":
     # 0) Select optional parameters
-    t_bar = 10  # time taken to collect V_bar
+    t_bar = 30  # time taken to collect V_bar
 
     ##  params in prior
     # mu = 0.8 # Shrinkage parameter for the prior (V_0, delta_0)
@@ -164,9 +164,9 @@ if __name__ == "__main_wandb__":
         "method": "random",  # or 'bayes'
         "metric": {"name": "m_dd", "goal": "minimize"},
         "parameters": {
-            "mu": {"distribution": "uniform", "min": 0.5, "max": 0.99},
-            "alpha0": {"distribution": "uniform", "min": 0.0, "max": 0.99},
-            "beta0": {"distribution": "uniform", "min": 0.0, "max": 0.99},
+            "mu": {"distribution": "uniform", "min": 0.01, "max": 0.99},
+            "alpha0": {"distribution": "uniform", "min": 0.01, "max": 0.99},
+            "beta0": {"distribution": "uniform", "min": 0.01, "max": 0.99},
             # gamma0 will be computed as 1 - alpha0 - beta0
         }
     }
@@ -182,11 +182,11 @@ if __name__ == "__main_wandb__":
     tickers = ["AAPL", "GOOGL"]
     ret_full, vol_full = gather_data(tickers)
 
-    ret = ret_full[:500]
-    vol = vol_full[:500]
-    X = indicators.build_reduced_regressor(ret, vol) # X[t] has to be constructed such it predicts y[t]
-    # set y = ret[p+1:], where p is the lag in AR(p), then X[t] is regressor for y[t], P@X[t] = y_hat for y[t]
+    ret = ret_full[:600]
+    vol = vol_full[:600]
     p = 4
+    X = indicators.build_reduced_regressor(ret, vol, p) # X[t] has to be constructed such it predicts y[t]
+    # set y = ret[p+1:], where p is the lag in AR(p), then X[t] is regressor for y[t], P@X[t] = y_hat for y[t]
     y = ret[p+1:]
 
     N = y.shape[1]
@@ -211,7 +211,6 @@ if __name__ == "__main_wandb__":
     # y = X @ beta_true + noise
 
     # 2) Collect \bar{V} and construct (V_0, delta_0), select priors alpha_0, beta_0, gamma_0
-    # TODO: run on market data
     def train():
         with wandb.init() as run:
             config = wandb.config

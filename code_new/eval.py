@@ -191,7 +191,7 @@ def plot_forgetting_params(params):
     ax.set_ylabel("value")
     # plt.title("Values over index")
     ax.grid(True)
-    ax.legend(frameon=False)  # no box around legend
+    ax.legend()  # no box around legend
     plt.tight_layout()
     plt.show()
 
@@ -202,7 +202,7 @@ def plot_omega(o):
     plt.scatter(x, o, marker="o", label="omega", color="purple")
     plt.xlabel("time")
     plt.ylabel("value")
-    plt.legend(frameon=False)
+    plt.legend()
     plt.show()
 
 def plot_simulation_wealth_paths(r_arr):

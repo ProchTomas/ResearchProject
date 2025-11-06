@@ -263,8 +263,8 @@ def genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, time_idx, d0, mu,
                                     logdet_Lambda, logdet_Lambda0,
                                     logdet_Vxx_full, logdet_Vxx0_full)
     # un-comment for plots
-    ll_history = []
-    pop_history = []
+    # ll_history = []
+    # pop_history = []
 
     iteration = 0
     while iteration < int(max_iter):
@@ -272,7 +272,7 @@ def genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, time_idx, d0, mu,
         liks = []
 
         # un-comment for plots
-        likelihoods = []
+        # likelihoods = []
 
         for mutated in mutations:
             rho_mut = int(np.sum(mutated))
@@ -289,7 +289,7 @@ def genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, time_idx, d0, mu,
 
             lk = get_likelihood(d0, time_idx, rho_mut, n, mu, ld_Lambda_m, ld_Lambda0_m, ld_Vxx_m, ld_Vxx0_m)
             # un-comment for plots
-            likelihoods.append(lk)
+            # likelihoods.append(lk)
 
             liks.append((lk, mutated))
 
@@ -335,12 +335,12 @@ def genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, time_idx, d0, mu,
         if lk_off > likelihood_max:
             parent = offspring.copy()
             likelihood_max = lk_off
-            print(f"New best (off): {parent}, lik={likelihood_max:.4f}")
+            # print(f"New best (off): {parent}, lik={likelihood_max:.4f}")
 
         # un-comment for plots
-        if iteration % 5 == 0:
-            pop_history.append(np.array(mutations))
-            ll_history.append(np.array(likelihoods))
+        # if iteration % 5 == 0:
+        #     pop_history.append(np.array(mutations))
+        #     ll_history.append(np.array(likelihoods))
         
         # update mutation rate + iter
         p_mut *= decay_rate
@@ -348,37 +348,37 @@ def genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, time_idx, d0, mu,
 
     # OPTIONALLY: plot the results
 
-    n_iters = len(ll_history)
-    pop_size = len(ll_history[0])
-
-    flat_pop = np.vstack(pop_history)
-    xticks = np.arange(n_iters) * 5
-    xtick_positions = np.arange(pop_size // 2, pop_size * n_iters, pop_size)
-    ll_array = np.array(ll_history)
-
-    # --- Plot setup ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), sharex=False, gridspec_kw={'height_ratios': [1, 1.5]})
-
-    # --- Top: Likelihoods ---
-    for i in range(n_iters):
-        ax1.scatter([i * 5] * pop_size, ll_array[i], color='tab:blue', alpha=0.7)
-    plt.gca().set_facecolor("white")
-    ax1.set_ylabel("log-likelihood")
-    ax1.set_title("Population Likelihoods")
-    ax1.grid(True)
-
-    # --- Bottom: Binary Population Heatmap ---
-    # Transpose to shape (features, time points)
-    ax2.imshow(flat_pop.T, aspect='auto', cmap='Greys', interpolation='nearest')
-    ax2.set_ylabel("Regressor Index")
-    ax2.set_xlabel("Generation")
-    ax2.set_title("Population Feature Selection")
-
-    ax2.set_xticks(xtick_positions)
-    ax2.set_xticklabels(xticks)
-
-    plt.tight_layout()
-    plt.show()
+    # n_iters = len(ll_history)
+    # pop_size = len(ll_history[0])
+    #
+    # flat_pop = np.vstack(pop_history)
+    # xticks = np.arange(n_iters) * 5
+    # xtick_positions = np.arange(pop_size // 2, pop_size * n_iters, pop_size)
+    # ll_array = np.array(ll_history)
+    #
+    # # --- Plot setup ---
+    # fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6), sharex=False, gridspec_kw={'height_ratios': [1, 1.5]})
+    #
+    # # --- Top: Likelihoods ---
+    # for i in range(n_iters):
+    #     ax1.scatter([i * 5] * pop_size, ll_array[i], color='tab:blue', alpha=0.7)
+    # plt.gca().set_facecolor("white")
+    # ax1.set_ylabel("log-likelihood")
+    # ax1.set_title("Population Likelihoods")
+    # ax1.grid(True)
+    #
+    # # --- Bottom: Binary Population Heatmap ---
+    # # Transpose to shape (features, time points)
+    # ax2.imshow(flat_pop.T, aspect='auto', cmap='Greys', interpolation='nearest')
+    # ax2.set_ylabel("Regressor Index")
+    # ax2.set_xlabel("Generation")
+    # ax2.set_title("Population Feature Selection")
+    #
+    # ax2.set_xticks(xtick_positions)
+    # ax2.set_xticklabels(xticks)
+    #
+    # plt.tight_layout()
+    # plt.show()
 
     return parent, likelihood_max
 
@@ -391,7 +391,7 @@ def objective_omega(omega, d, sigma, a_prev):
     return omega*np.trace(e_inv @ sigma) + omega* a_prev@d@e_inv@sigma@e_inv@d@a_prev
 
 def get_omega(d, sigma, a_prev,
-                      omega_min=1e-6, omega_max=10.0):
+                      omega_min=1e-6, omega_max=1000.0):
     """
     Minimizes the objective function directly.
     """

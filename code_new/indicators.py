@@ -138,7 +138,7 @@ def build_regressor(r, v, p):
         lag_values.append(np.array(r[j-p:j]).flatten()) # arrays of lagged values up to and including r[j-1]
         lag_volumes.append(np.array(v[j-p:j]).flatten())
 
-    x = np.hstack([lag_values, lag_volumes, macd_values, stoch_osc_values, vol_osc_values, rsi_values])
+    x = np.hstack([lag_values, macd_values, stoch_osc_values, rsi_values, np.ones((np.asarray(lag_values).shape[0], 1))])
     return x
 
 def build_reduced_regressor(r, v, p):
@@ -172,5 +172,5 @@ def build_reduced_regressor(r, v, p):
         lag_values.append(np.array(r[j - p:j]).flatten())  # arrays of lagged values up to and including r[j-1]
         lag_volumes.append(np.array(v[j - 1:j]).flatten())
 
-    x = np.hstack([lag_values, np.ones((np.asarray(lag_values).shape[0], 1))])
+    x = np.hstack([lag_values, macd_values, np.ones((np.asarray(lag_values).shape[0], 1))])
     return x
