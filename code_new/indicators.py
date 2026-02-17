@@ -106,7 +106,7 @@ def vol_osc(volume_period1, volume_period2):
     return (short_sma - long_sma) / short_sma # returns value from range [0, 1]
 
 
-def build_regressor(r, v, p):
+def build_regressor(r, p):
     """Function to construct array that contains regressors
     Contains: previous y_t, log-volume, short term SMA of volume and previous y_t,
     inflation data, VIX, sin with different frequencies, volume oscillator, stochastic oscillator,
@@ -121,27 +121,48 @@ def build_regressor(r, v, p):
     rsi_values = []
     lag_values = []
     mae_short = np.zeros(len(r[0]))
+    mae_short2 = np.zeros(len(r[0]))
+    mae_short3 = np.zeros(len(r[0]))
     short_period = 5
     long_period = 10
+    short_period2 = 5
+    short_period3 = 1
+    long_period2 = 20
+    long_period3 = 30
     mae_long = np.zeros(len(r[0]))
+    mae_long2 = np.zeros(len(r[0]))
+    mae_long3 = np.zeros(len(r[0]))
     macd_values = []
+    macd_values_short = []
+    macd_values_long = []
     stoch_osc_values = []
-    vol_osc_values = []
-    lag_volumes = []
+    # vol_osc_values = []
+    # lag_volumes = []
     for j in range(p+1, len(r)):
         mae_short = mae(r[j-1], mae_short, short_period)
         mae_long = mae(r[j-1], mae_long, long_period)
         macd_values.append(mae_long - mae_short)
-        stoch_osc_values.append(stoch_osc(r[j-p:j]))
-        vol_osc_values.append(vol_osc(v[j-p:j], v[j-1]))
-        rsi_values.append(rsi(r[j-p:j])) # RSI from and including r[j-1] (p+1 observations)
-        lag_values.append(np.array(r[j-p:j]).flatten()) # arrays of lagged values up to and including r[j-1]
-        lag_volumes.append(np.array(v[j-p:j]).flatten())
 
-    x = np.hstack([lag_values, macd_values, stoch_osc_values, rsi_values, np.ones((np.asarray(lag_values).shape[0], 1))])
+        mae_short2 = mae(r[j - 1], mae_short2, short_period2)
+        mae_long2 = mae(r[j - 1], mae_long2, long_period2)
+        macd_values_short.append(mae_long2 - mae_short2)
+
+        mae_short3 = mae(r[j - 1], mae_short3, short_period3)
+        mae_long3 = mae(r[j - 1], mae_long3, long_period3)
+        macd_values_long.append(mae_long3 - mae_short3)
+        # stoch_osc_values.append(stoch_osc(r[j-p:j]))
+        # vol_osc_values.append(vol_osc(v[j-p:j], v[j-1]))
+        # rsi_values.append(rsi(r[j-p:j])) # RSI from and including r[j-1] (p+1 observations)
+        lag_values.append(np.array(r[j-p:j]).flatten()) # arrays of lagged values up to and including r[j-1]
+        # lag_volumes.append(np.array(v[j-p:j]).flatten())
+    n = len(lag_values)
+    sin10 = np.sin(2 * np.pi * np.arange(n) / 10).reshape(-1, 1)
+    sin30 = np.sin(2 * np.pi * np.arange(n) / 30).reshape(-1, 1)
+    sin90 = np.sin(2 * np.pi * np.arange(n) / 90).reshape(-1, 1)
+    x = np.hstack([lag_values, macd_values, macd_values_short, macd_values_long, sin10, sin30, sin90, np.ones((np.asarray(lag_values).shape[0], 1))])
     return x
 
-def build_reduced_regressor(r, v, p):
+def build_reduced_regressor(r, p):
     """To make the work-flow simple. Call indicators.build_regressor() to obtain the full regressors array.
     Then run structure estimation, simply comment out the insignificant regressors and adjust the autoregression
     depth for returns and volumes
@@ -152,25 +173,23 @@ def build_reduced_regressor(r, v, p):
     :returns
         array of (reduced) regressors X
     """
-    rsi_values = []
+    # rsi_values = []
     lag_values = []
     mae_short = np.zeros(len(r[0]))
     short_period = 5
     long_period = 10
     mae_long = np.zeros(len(r[0]))
     macd_values = []
-    stoch_osc_values = []
-    vol_osc_values = []
-    lag_volumes = []
+    # stoch_osc_values = []
     for j in range(p+1, len(r)):
         mae_short = mae(r[j-1], mae_short, short_period)
         mae_long = mae(r[j-1], mae_long, long_period)
         macd_values.append(mae_long - mae_short)
-        stoch_osc_values.append(stoch_osc(r[j - p:j]))
-        vol_osc_values.append(vol_osc(v[j - p:j], v[j-1]))
-        rsi_values.append(rsi(r[j - p:j]))  # RSI from and including r[j-1] (p+1 observations)
+        # stoch_osc_values.append(stoch_osc(r[j - p:j]))
+        # rsi_values.append(rsi(r[j - p:j]))  # RSI from and including r[j-1] (p+1 observations)
         lag_values.append(np.array(r[j - p:j]).flatten())  # arrays of lagged values up to and including r[j-1]
-        lag_volumes.append(np.array(v[j - 1:j]).flatten())
 
+    n = len(lag_values)
+    sin30 = np.sin(2 * np.pi * np.arange(n) / 30).reshape(-1, 1)
     x = np.hstack([lag_values, macd_values, np.ones((np.asarray(lag_values).shape[0], 1))])
     return x

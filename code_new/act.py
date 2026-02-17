@@ -46,11 +46,11 @@ def get_loss_matrix(n, rho, d, sigma, omega):
     #     [-d, d, 0.5* omega * np.eye(n)],
     #     [-0.5 * omega * np.eye(n), 0.5 * omega * np.eye(n), 0.5 * (omega ** 2) * np.linalg.inv(d)]
     # ])
-    epsilon = 1e-5*np.eye(n)
+    epsilon = 1e-7*np.eye(n)
     q = np.block([
-        [e_tilde, -d, -0.5 * omega * np.eye(n)],
-        [-d, epsilon + d @ f, 0.5 * omega * f],
-        [-0.5 * omega * np.eye(n), 0.5 * omega * f.T, epsilon + 0.25 * (omega ** 2) * e_tilde_inv]
+        [e_tilde + epsilon, -d, -0.5 * omega * np.eye(n)],
+        [-d, epsilon + d @ f, 0.5 * omega * f.T],
+        [-0.5 * omega * np.eye(n), 0.5 * omega * f, epsilon + 0.25 * (omega ** 2) * e_tilde_inv]
     ])
     l = cholesky(q, lower=True)  # ll^T = q, l^T is upper triangular
     r = l.T  # r^Tr = q
@@ -217,7 +217,7 @@ def smalbe_cqp_solver(H_a, H_x, x_state, N, lambda_init, a_initial_guess):
     return a
 
 
-def action_generation(N, rho, s, B, Q, A, h,  p_hat, g_x, sigma_inv, sampling):
+def action_generation(N, rho, s, B, Q, A, h, H_init, p_hat, g_x, sigma_inv, sampling):
     """
     Generate optimal action using a constrained LQR framework solved by SMALBE
     :arg
@@ -231,7 +231,8 @@ def action_generation(N, rho, s, B, Q, A, h,  p_hat, g_x, sigma_inv, sampling):
     :returns
         optimal action
     """
-    H = np.zeros_like(Q)
+    # H = np.zeros_like(Q)
+    H = H_init
     
     ones = np.ones((N, 1))
     e_N = np.zeros_like(s.T)
@@ -269,6 +270,7 @@ def action_generation(N, rho, s, B, Q, A, h,  p_hat, g_x, sigma_inv, sampling):
         _, R_2 = np.linalg.qr(H_new)
         H = R_2
 
+
     # After the backward recursion, set up the final QP problem for the current time
     H_tilde_final = np.block([[Q], [H]])
     _, R_final = np.linalg.qr(H_tilde_final)
@@ -286,4 +288,5 @@ def action_generation(N, rho, s, B, Q, A, h,  p_hat, g_x, sigma_inv, sampling):
         a_guess = s[:N]
     a_opt = smalbe_cqp_solver(H_a, H_x, s_state_col, N, M_denominator, a_guess)
     
-    return a_opt
+    return a_opt, R_final
+

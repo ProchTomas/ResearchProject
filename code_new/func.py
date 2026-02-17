@@ -35,7 +35,15 @@ def update_G(G_prev, d, G0, alpha, beta):
         signs = np.where(diag >= 0, 1.0, -1.0)
         G_new = R * signs.reshape(-1, 1)
         return G_new
+    elif 1-alpha-beta < 1e-17:
+        u = np.sqrt(beta) + d.reshape(-1, 1)
+        H = np.hstack([u, np.sqrt(alpha+beta) * G_prev])
+        R, _ = rq(H, mode="economic")  # R will be an upper-triangular matrix
 
+        diag = np.diag(R)
+        signs = np.where(diag >= 0, 1.0, -1.0)
+        G_new = R * signs.reshape(-1, 1)
+        return G_new
     else:
         # 1. Scale the components of the update
         g_prev_scaled = np.sqrt(alpha + beta) * G_prev
@@ -112,11 +120,11 @@ def func_for_delta0(t_bar, mu, delta0):
     term4 = -np.log(0.5 * (t_bar + delta0)) + digamma(0.5 * (t_bar + delta0))
     return term1 + term2 + term3 + term4
 
-def find_delta0_integer(t_bar, mu, max_int=50):
+def find_delta0_integer(t_bar, mu, rho, max_int=1000):
     """
     Find integer delta0 >= 1 that minimizes func_for_delta0.
     """
-    candidates = np.arange(1, max_int+1)
+    candidates = np.arange(rho+1, max_int+1)
     values = [func_for_delta0(t_bar, mu, d) for d in candidates]
     idx = np.nanargmin(np.abs(values))
     return candidates[idx], values[idx]
@@ -147,7 +155,7 @@ def opt_prior(y, x, t_bar, N, rho, mu):
         G_bar = update_G(G_bar, d, G_0, a, b)
 
     try:
-        delta0_hat = find_delta0_integer(t_bar, mu)
+        delta0_hat = find_delta0_integer(t_bar, mu, rho)
         delta0 = delta0_hat[0]
     except Exception as e:
         print("Solver failed:", e)
@@ -160,13 +168,6 @@ def opt_prior(y, x, t_bar, N, rho, mu):
     Gyy_bar = G_bar[:N, :N]
     Gyx_bar = G_bar[:N, N:]
     Gxx_bar = G_bar[N:, N:]
-
-
-    try:
-        delta0_hat = find_delta0_integer(t_bar, mu)
-        delta0 = delta0_hat[0]
-    except Exception as e:
-        print("Solver failed:", e)
 
     Vyy0 = (mu*delta0/(t_bar+(1-mu)*delta0)*Vyy_bar +
             mu*t_bar/(t_bar*(1-mu)+(1-mu)**2*delta0)*Vyx_bar@np.linalg.inv(Vxx_bar)@Vyx_bar.T)
@@ -385,13 +386,13 @@ def genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, time_idx, d0, mu,
 
 def objective_omega(omega, d, sigma, a_prev):
     # e = d + omega ** 2 * sigma
-    # x = d - d@np.linalg.inv(e)@sigma@np.linalg.inv(e)@d
+    # x = d - d@np.linalg.inv(e)@d
     # return np.log(det(e)) + np.dot(a_prev, x@a_prev)
     e_inv = np.linalg.inv(d + omega ** 2 * sigma)
     return omega*np.trace(e_inv @ sigma) + omega* a_prev@d@e_inv@sigma@e_inv@d@a_prev
 
 def get_omega(d, sigma, a_prev,
-                      omega_min=1e-6, omega_max=1000.0):
+                      omega_min=1e-8, omega_max=1e3):
     """
     Minimizes the objective function directly.
     """
@@ -472,3 +473,52 @@ def sample_matrix_normal(p_hat, s, g_x, n=1, rng=None):
             z = rng.standard_normal(size=(r, c))
             samples[i] = p_hat + L_s @ z @ L_v_inv.T
         return samples
+
+
+def inv_and_logdet_spd(A, eps=1e-8):
+    A = 0.5 * (A + A.T)  # enforce symmetry
+    w, V = np.linalg.eigh(A)
+    w_clipped = np.clip(w, eps, None)
+
+    A_inv = (V / w_clipped) @ V.T
+    logdet = np.sum(np.log(w_clipped))
+    return A_inv, logdet
+
+
+
+def func_F_for_H(phi, phi_0, h_new, h_prev):
+    if not (0.0 < phi < 1.0):
+        return np.inf
+
+    try:
+        h_prev_inv, logdet_p = inv_and_logdet_spd(h_prev)
+        h_new_inv,  logdet_n = inv_and_logdet_spd(h_new)
+    except np.linalg.LinAlgError:
+        return np.inf
+
+    h_tilde_inv = phi * h_prev_inv + (1 - phi) * h_new_inv
+
+    # logdet of h_tilde_inv
+    _, logdet_t = inv_and_logdet_spd(np.linalg.inv(h_tilde_inv))
+
+    return (
+        phi * np.log(phi / phi_0)
+        + (1 - phi) * np.log((1 - phi) / (1 - phi_0))
+        - 0.5 * logdet_t
+        + 0.5 * phi * logdet_p
+        + 0.5 * (1 - phi) * logdet_n
+    )
+
+
+
+def optimize_H(phi_0, h_prev, h_new):
+    res = minimize_scalar(
+        func_F_for_H,
+        bounds=(1e-6, 1 - 1e-6),
+        args=(phi_0, h_new, h_prev),
+        method="bounded"
+    )
+
+    phi_opt = res.x
+    return phi_opt * h_prev + (1 - phi_opt) * h_new
+
