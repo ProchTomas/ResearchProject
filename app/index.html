@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Optimization</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #e0e6ed;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 { font-size: 3rem; margin-bottom: 10px; color: #fff; }
+        .subtitle { opacity: 0.8; font-size: 1.1rem; }
+
+        .panel, .modal-content, .card, .result-box, .preview-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            color: #e0e6ed;
+        }
+
+        .panel { padding: 30px; margin-bottom: 30px; }
+        .card { padding: 20px; }
+        .result-box, .preview-box { padding: 20px; margin-top: 20px; }
+
+        .panel h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-color: rgba(255, 255, 255, 0.5); }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn-primary { background: rgba(30, 60, 114, 0.6); color: white; }
+        .btn-success { background: rgba(40, 167, 69, 0.6); color: white; }
+        .btn-secondary { background: rgba(108, 117, 125, 0.6); color: white; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .card h3 { color: #fff; margin-bottom: 15px; font-size: 1.2rem; }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        input[type="number"], input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 1rem;
+            margin: 5px 0;
+        }
+
+        input:focus, textarea:focus { outline: none; border-color: rgba(255, 255, 255, 0.5); }
+        ::-webkit-calendar-picker-indicator { filter: invert(1); } /* Fixes dark number input arrows */
+
+        .result-box.success { border-color: rgba(40, 167, 69, 0.5); background: rgba(40, 167, 69, 0.1); }
+        .result-box.error { border-color: rgba(220, 53, 69, 0.5); background: rgba(220, 53, 69, 0.1); color: #ff8e99; }
+
+        .allocation-bar {
+            display: flex;
+            height: 50px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .allocation-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; }
+        .legend-color { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 1000;
+            align-items: center; justify-content: center;
+        }
+        .modal.active { display: flex; }
+
+        .modal-content { padding: 30px; width: 90%; max-width: 550px; max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { color: #fff; }
+
+        .btn-close { background: none; border: none; font-size: 2rem; cursor: pointer; color: #fff; opacity: 0.7; }
+        .btn-close:hover { opacity: 1; }
+
+        .stats-list-item { cursor: pointer; transition: all 0.3s; padding: 15px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 10px; background: rgba(255,255,255,0.05); }
+        .stats-list-item:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+
+        .dim-badge { background: rgba(30, 60, 114, 0.6); color: white; padding: 5px 15px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); margin-left: 10px; }
+
+        /* Correlogram Grid */
+        .corr-grid { display: grid; gap: 2px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); padding: 2px; border-radius: 8px; }
+        .corr-cell { padding: 10px; text-align: center; font-weight: bold; text-shadow: 0 1px 2px rgba(0,0,0,0.5); color: white; display: flex; align-items: center; justify-content: center; border-radius: 4px; }
+        .corr-label { font-size: 0.85rem; color: #aaa; text-align: center; display: flex; align-items: center; justify-content: center; }
+        
+        #chart-canvas { 
+            max-height: 500px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+        }
+        
+        .preview-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #1e3c72;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            margin: 15px 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .dim-badge {
+            background: #1e3c72;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3c72;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            z-index: 10000;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .notification.success { background: #28a745; }
+        .notification.error { background: #dc3545; }
+        
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Portfolio Optimization</h1>
+            <p class="subtitle">Adaptive Bayesian Multi-Asset Allocation System</p>
+        </header>
+
+        <!-- Statistics Management -->
+        <div class="panel">
+            <h2>Statistics Manager</h2>
+            <div>
+                <button class="btn btn-primary" onclick="showModal('init-modal')">+ New Model</button>
+                <button class="btn btn-secondary" onclick="loadStatisticsList()">↑ Load</button>
+                <button class="btn btn-success" id="save-btn" onclick="showModal('save-modal')" disabled>↓ Save</button>
+                <button class="btn btn-secondary" id="corr-btn" onclick="showCorrelation()" disabled>⊞ Correlation Matrix</button>
+            </div>
+            <div id="stats-info" style="margin-top: 20px;">
+                <p>No statistics loaded. Initialize a new model or load existing statistics.</p>
+            </div>
+        </div>
+
+        <!-- Regressor Builder -->
+        <div class="panel">
+            <h2>Regressor Builder <span class="dim-badge" id="regressor-dim">0</span></h2>
+            
+            <div class="grid">
+                <div class="card">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-intercept" checked onchange="updateRegressor()">
+                        <span>Intercept</span>
+                    </label>
+                    <input type="number" id="intercept-value" value="1" step="0.1" onchange="updateRegressor()">
+                </div>
+
+                <div class="card">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-returns" onchange="updateRegressor()">
+                        <span>Past Returns</span>
+                    </label>
+                    <label>Lags: <input type="number" id="return-lags" value="5" min="1" max="10" onchange="updateRegressor()"></label>
+                    <div id="return-inputs"></div>
+                </div>
+
+                <div class="card">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-macd" onchange="updateRegressor()">
+                        <span>MACD</span>
+                    </label>
+                    <input type="number" id="macd-value" value="0" step="0.001" onchange="updateRegressor()">
+                    <button class="btn btn-secondary" onclick="showModal('macd-modal')" style="width: 100%; margin-top: 10px;">Calculate</button>
+                </div>
+
+                <div class="card">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-sine" onchange="updateRegressor()">
+                        <span>Sine Functions</span>
+                    </label>
+                    <div id="sine-list"></div>
+                    <button class="btn btn-secondary" onclick="addSine()" style="width: 100%; margin-top: 10px;">+ Add</button>
+                </div>
+
+                <div class="card">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="use-cosine" onchange="updateRegressor()">
+                        <span>Cosine Functions</span>
+                    </label>
+                    <div id="cosine-list"></div>
+                    <button class="btn btn-secondary" onclick="addCosine()" style="width: 100%; margin-top: 10px;">+ Add</button>
+                </div>
+            </div>
+
+            <div class="preview-box" id="regressor-preview">[ ]</div>
+        </div>
+
+        <!-- Model Execution -->
+        <div class="panel">
+            <h2>Model Execution</h2>
+            <div class="grid">
+                <div>
+                    <h3>One-Step Optimization</h3>
+                    <button class="btn btn-primary" id="run-btn" onclick="runModel()" disabled style="width: 100%; font-size: 1.1rem; padding: 15px;">
+                        Run Model
+                    </button>
+                    <div id="run-result" class="result-box"></div>
+                </div>
+
+                <div>
+                    <h3>Multi-Step Simulation</h3>
+                    <label>Steps: <input type="number" id="sim-steps" value="20" min="5" max="100"></label>
+                    <label>Paths: <input type="number" id="sim-paths" value="5" min="1" max="20"></label>
+                    <button class="btn btn-secondary" id="sim-btn" onclick="runSimulation()" disabled style="width: 100%; font-size: 1.1rem; padding: 15px; margin-top: 10px;">
+                        Simulate
+                    </button>
+                    <div id="sim-result" class="result-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization -->
+        <div class="panel" id="viz-panel" style="display:none;">
+            <h2>Simulation Results</h2>
+            <canvas id="chart-canvas"></canvas>
+        </div>
+
+        <!-- Update -->
+        <div class="panel">
+            <h2>Model Update</h2>
+            <p style="margin-bottom: 15px;">Enter observed returns to update statistics:</p>
+            <div id="update-inputs" class="grid"></div>
+            <button class="btn btn-success" id="update-btn" onclick="updateModel()" disabled style="font-size: 1.1rem; padding: 15px;">
+                Update Statistics
+            </button>
+            <div id="update-result" class="result-box"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="init-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Initialize New Model</h3>
+                <button class="btn-close" onclick="closeModal('init-modal')">×</button>
+            </div>
+            <label>Assets: <input type="number" id="init-assets" value="2" min="1" max="10"></label>
+            <label>Regressors: <input type="number" id="init-regressors" value="2" min="1" max="20"></label>
+            <label>Tickers (comma-separated): <input type="text" id="init-tickers" placeholder="AAPL, GOOGL"></label>
+            <button class="btn btn-primary" onclick="initializeModel()" style="width: 100%; margin-top: 15px;">Initialize</button>
+        </div>
+    </div>
+
+    <div id="load-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Load Statistics</h3>
+                <button class="btn-close" onclick="closeModal('load-modal')">×</button>
+            </div>
+            <div id="stats-list"></div>
+        </div>
+    </div>
+
+    <div id="save-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Save Statistics</h3>
+                <button class="btn-close" onclick="closeModal('save-modal')">×</button>
+            </div>
+            <label>Name: <input type="text" id="save-name" placeholder="my_portfolio"></label>
+            <button class="btn btn-success" onclick="saveStatistics()" style="width: 100%; margin-top: 15px;">Save</button>
+        </div>
+    </div>
+
+    <div id="macd-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Calculate MACD</h3>
+                <button class="btn-close" onclick="closeModal('macd-modal')">×</button>
+            </div>
+            <label>Prices (comma-separated, min 26):
+                <textarea id="macd-prices" rows="4" placeholder="100, 102, 101, 105, ..."></textarea>
+            </label>
+            <button class="btn btn-primary" onclick="calculateMACD()" style="width: 100%; margin-top: 15px;">Calculate</button>
+        </div>
+    </div>
+
+    <div id="corr-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Asset Correlation Analysis</h3>
+                <button class="btn-close" onclick="closeModal('corr-modal')">×</button>
+            </div>
+            <p style="opacity: 0.8; font-size: 0.9rem;">Estimated correlation derived from covariance matrix (Σ).</p>
+            <div id="corr-matrix-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        const API = '';
+        let currentStats = null;
+        let currentRegressor = [];
+        let sineFunctions = [];
+        let cosineFunctions = [];
+        let chart = null;
+        let currentRegressorMeta = [];
+
+        const COLORS = ['#1e3c72', '#28a745', '#dc3545', '#ffc107', '#17a2b8', '#6f42c1', '#e83e8c', '#fd7e14'];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('App initialized');
+            updateRegressor();
+            addSine();
+            addCosine();
+        });
+
+        function showModal(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function showNotification(message, type = 'success') {
+            const notif = document.createElement('div');
+            notif.className = `notification ${type}`;
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 3000);
+        }
+
+        async function initializeModel() {
+            const n = parseInt(document.getElementById('init-assets').value);
+            const rho = parseInt(document.getElementById('init-regressors').value);
+            const tickersInput = document.getElementById('init-tickers').value;
+            const tickers = tickersInput ? tickersInput.split(',').map(t => t.trim()) : Array.from({length: n}, (_, i) => `Asset ${i+1}`);
+
+            try {
+                const res = await fetch(API + '/api/statistics/initialize', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({n_assets: n, n_regressors: rho, tickers})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentStats = data.statistics;
+                    displayStatistics();
+                    enableButtons();
+                    closeModal('init-modal');
+                    showNotification('Model initialized!');
+                }
+            } catch (e) {
+                showNotification('Error: ' + e.message, 'error');
+            }
+        }
+
+        function displayStatistics() {
+            const tickers = currentStats.tickers || Array.from({length: currentStats.n_assets}, (_, i) => `Asset ${i+1}`);
+            
+            document.getElementById('stats-info').innerHTML = `
+                <div class="grid">
+                    <div><strong>Assets:</strong> ${currentStats.n_assets}</div>
+                    <div><strong>Regressors:</strong> ${currentStats.n_regressors}</div>
+                    <div><strong>Delta:</strong> ${currentStats.Delta.toFixed(4)}</div>
+                    <div><strong>Tickers:</strong> ${tickers.join(', ')}</div>
+                </div>
+            `;
+
+            const container = document.getElementById('update-inputs');
+            container.innerHTML = tickers.map((t, i) => `
+                <div>
+                    <label>${t}:<input type="number" id="return-${i}" value="0" step="0.0001"></label>
+                </div>
+            `).join('');
+        }
+
+        function enableButtons() {
+            ['save-btn', 'run-btn', 'sim-btn', 'update-btn'].forEach(id => {
+                document.getElementById(id).disabled = false;
+            });
+        }
+
+        async function loadStatisticsList() {
+            showModal('load-modal');
+            try {
+                const res = await fetch(API + '/api/statistics/list');
+                const data = await res.json();
+                
+                const listEl = document.getElementById('stats-list');
+                if (data.success && data.statistics.length > 0) {
+                    listEl.innerHTML = data.statistics.map(s => `
+                        <div class="stats-list-item" onclick="loadStatistics('${s.filename}')">
+                            <strong>${s.name}</strong><br>
+                            ${s.n_assets} assets × ${s.n_regressors} regressors<br>
+                            <small>${new Date(s.timestamp).toLocaleString()}</small>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<p>No saved statistics found</p>';
+                }
+            } catch (e) {
+                showNotification('Error loading list', 'error');
+            }
+        }
+
+        async function loadStatistics(filename) {
+            try {
+                const res = await fetch(API + '/api/statistics/load', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({filename})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentStats = data.statistics;
+                    displayStatistics();
+                    enableButtons();
+                    closeModal('load-modal');
+                    showNotification('Statistics loaded!');
+                }
+            } catch (e) {
+                showNotification('Error loading', 'error');
+            }
+        }
+
+        async function saveStatistics() {
+            const name = document.getElementById('save-name').value || `portfolio_${new Date().toISOString().split('T')[0]}`;
+            
+            try {
+                const res = await fetch(API + '/api/statistics/save', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({...currentStats, name})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    closeModal('save-modal');
+                    showNotification('Statistics saved!');
+                }
+            } catch (e) {
+                showNotification('Error saving', 'error');
+            }
+        }
+
+        // Add 'corr-btn' to the enableButtons() function array
+        function enableButtons() {
+            ['save-btn', 'run-btn', 'sim-btn', 'update-btn', 'corr-btn'].forEach(id => {
+                document.getElementById(id).disabled = false;
+            });
+        }
+
+        // Correlation Matrix Logic
+        async function showCorrelation() {
+            if (!currentStats) return;
+
+            try {
+                const res = await fetch(API + '/api/model/correlation', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        G: currentStats.G,
+                        Delta: currentStats.Delta,
+                        n_assets: currentStats.n_assets
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    renderCorrelogram(data.correlation);
+                    showModal('corr-modal');
+                } else {
+                    showNotification('Error fetching correlation: ' + data.error, 'error');
+                }
+            } catch (e) {
+                showNotification('Error: ' + e.message, 'error');
+            }
+        }
+
+        function renderCorrelogram(matrix) {
+            const container = document.getElementById('corr-matrix-container');
+            const n = matrix.length;
+            const tickers = currentStats.tickers || Array.from({length: n}, (_, i) => `A${i+1}`);
+            
+            // Create grid with labels (+1 for axes)
+            container.innerHTML = `<div class="corr-grid" style="grid-template-columns: 50px repeat(${n}, 1fr);"></div>`;
+            const grid = container.querySelector('.corr-grid');
+
+            // Top Left empty cell
+            grid.innerHTML += `<div></div>`;
+            
+            // Top Column Labels
+            tickers.forEach(t => {
+                grid.innerHTML += `<div class="corr-label">${t}</div>`;
+            });
+
+            // Rows
+            matrix.forEach((row, i) => {
+                // Row Label
+                grid.innerHTML += `<div class="corr-label">${tickers[i]}</div>`;
+                
+                row.forEach((val, j) => {
+                    // Color gradient: Red (-1) to Transparent (0) to Green (1)
+                    let color;
+                    if (val > 0) {
+                        color = `rgba(40, 167, 69, ${Math.abs(val)})`; // Green
+                    } else {
+                        color = `rgba(220, 53, 69, ${Math.abs(val)})`; // Red
+                    }
+                    // Display 1.00 for diagonal instead of raw float precision
+                    const displayVal = (i === j) ? '1.00' : val.toFixed(2);
+                    grid.innerHTML += `<div class="corr-cell" style="background: ${color};">${displayVal}</div>`;
+                });
+            });
+        }
+
+        function updateRegressor() {
+            currentRegressor = [];
+            currentRegressorMeta = [];
+
+            if (document.getElementById('use-intercept').checked) {
+                currentRegressor.push(parseFloat(document.getElementById('intercept-value').value) || 1);
+                currentRegressorMeta.push({ type: 'intercept' });
+            }
+
+            if (document.getElementById('use-returns').checked) {
+                const lags = parseInt(document.getElementById('return-lags').value) || 5;
+                const container = document.getElementById('return-inputs');
+                if (container.children.length !== lags) {
+                    container.innerHTML = Array.from({length: lags}, (_, i) => 
+                        `<input type="number" id="return-lag-${i}" value="0" step="0.0001" onchange="updateRegressor()" style="margin: 5px 0;">`
+                    ).join('');
+                }
+                for (let i = 0; i < lags; i++) {
+                    currentRegressor.push(parseFloat(document.getElementById(`return-lag-${i}`).value) || 0);
+                    currentRegressorMeta.push({ type: 'return', lag: i });
+                }
+            }
+
+            if (document.getElementById('use-macd').checked) {
+                currentRegressor.push(parseFloat(document.getElementById('macd-value').value) || 0);
+                currentRegressorMeta.push({ type: 'macd' });
+            }
+
+            if (document.getElementById('use-sine').checked) {
+                sineFunctions.forEach(s => {
+                    const val = Math.sin(2 * Math.PI * s.t / s.period);
+                    currentRegressor.push(val);
+                    currentRegressorMeta.push({ type: 'sine', period: s.period, t: s.t });
+                });
+            }
+
+            if (document.getElementById('use-cosine').checked) {
+                cosineFunctions.forEach(c => {
+                    const val = Math.cos(2 * Math.PI * c.t / c.period);
+                    currentRegressor.push(val);
+                    currentRegressorMeta.push({ type: 'cosine', period: c.period, t: c.t });
+                });
+            }
+
+            document.getElementById('regressor-preview').textContent = 
+                `[ ${currentRegressor.map(v => v.toFixed(4)).join(', ')} ]`;
+            document.getElementById('regressor-dim').textContent = currentRegressor.length;
+        }
+        function addSine() {
+            const id = sineFunctions.length;
+            sineFunctions.push({id, period: 252, t: 0});
+            const container = document.getElementById('sine-list');
+            const div = document.createElement('div');
+            div.id = `sine-${id}`;
+            div.innerHTML = `
+                <input type="number" id="sine-p-${id}" value="252" placeholder="Period" onchange="updateSineVal(${id})" style="width: 48%; margin: 5px 1%;">
+                <input type="number" id="sine-t-${id}" value="0" placeholder="t" onchange="updateSineVal(${id})" style="width: 40%; margin: 5px 1%;">
+                <button onclick="removeSine(${id})" style="width: 8%; padding: 5px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">×</button>
+            `;
+            container.appendChild(div);
+            updateRegressor();
+        }
+
+        function updateSineVal(id) {
+            const s = sineFunctions.find(x => x.id === id);
+            if (s) {
+                s.period = parseFloat(document.getElementById(`sine-p-${id}`).value) || 252;
+                s.t = parseFloat(document.getElementById(`sine-t-${id}`).value) || 0;
+            }
+            updateRegressor();
+        }
+
+        function removeSine(id) {
+            sineFunctions = sineFunctions.filter(s => s.id !== id);
+            document.getElementById(`sine-${id}`).remove();
+            updateRegressor();
+        }
+
+        function addCosine() {
+            const id = cosineFunctions.length;
+            cosineFunctions.push({id, period: 252, t: 0});
+            const container = document.getElementById('cosine-list');
+            const div = document.createElement('div');
+            div.id = `cosine-${id}`;
+            div.innerHTML = `
+                <input type="number" id="cosine-p-${id}" value="252" placeholder="Period" onchange="updateCosineVal(${id})" style="width: 48%; margin: 5px 1%;">
+                <input type="number" id="cosine-t-${id}" value="0" placeholder="t" onchange="updateCosineVal(${id})" style="width: 40%; margin: 5px 1%;">
+                <button onclick="removeCosine(${id})" style="width: 8%; padding: 5px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">×</button>
+            `;
+            container.appendChild(div);
+            updateRegressor();
+        }
+
+        function updateCosineVal(id) {
+            const c = cosineFunctions.find(x => x.id === id);
+            if (c) {
+                c.period = parseFloat(document.getElementById(`cosine-p-${id}`).value) || 252;
+                c.t = parseFloat(document.getElementById(`cosine-t-${id}`).value) || 0;
+            }
+            updateRegressor();
+        }
+
+        function removeCosine(id) {
+            cosineFunctions = cosineFunctions.filter(c => c.id !== id);
+            document.getElementById(`cosine-${id}`).remove();
+            updateRegressor();
+        }
+
+        async function calculateMACD() {
+            const pricesStr = document.getElementById('macd-prices').value;
+            const prices = pricesStr.split(',').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+
+            if (prices.length < 26) {
+                showNotification('Need at least 26 prices', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(API + '/api/indicators/macd', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prices})
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('macd-value').value = data.macd.toFixed(6);
+                    closeModal('macd-modal');
+                    updateRegressor();
+                    showNotification('MACD calculated!');
+                }
+            } catch (e) {
+                showNotification('Error calculating MACD', 'error');
+            }
+        }
+
+        async function runModel() {
+            if (!currentStats) {
+                showNotification('Load statistics first', 'error');
+                return;
+            }
+
+            if (currentRegressor.length !== currentStats.n_regressors) {
+                showNotification(`Dimension mismatch: expected ${currentStats.n_regressors}, got ${currentRegressor.length}`, 'error');
+                return;
+            }
+
+            const resultEl = document.getElementById('run-result');
+            resultEl.innerHTML = '<div class="loading"></div>';
+            resultEl.className = 'result-box';
+
+            try {
+                const res = await fetch(API + '/api/model/run', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        G: currentStats.G,
+                        H: currentStats.H,
+                        Delta: currentStats.Delta,
+                        a_prev: currentStats.a_prev,
+                        regressor: currentRegressor,
+                        n_assets: currentStats.n_assets
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentStats.H_new = data.H_new;
+                    displayAllocation(data.optimal_allocation, data.portfolio_return, resultEl);
+                    resultEl.classList.add('success');
+                    showNotification('Model executed!');
+                } else {
+                    resultEl.innerHTML = `Error: ${data.error}`;
+                    resultEl.classList.add('error');
+                }
+            } catch (e) {
+                resultEl.innerHTML = `Error: ${e.message}`;
+                resultEl.classList.add('error');
+            }
+        }
+
+        function displayAllocation(allocation, portReturn, container) {
+            const tickers = currentStats.tickers || Array.from({length: allocation.length}, (_, i) => `Asset ${i+1}`);
+            const sum = allocation.reduce((a, b) => a + b, 0);
+            const normalized = allocation.map(a => a / sum);
+
+            let html = '<strong>Optimal Allocation</strong><br>';
+            if (portReturn !== undefined) {
+                html += `Expected Return: <strong style="color: #28a745;">${(portReturn * 100).toFixed(3)}%</strong><br><br>`;
+            }
+
+            html += '<div class="allocation-bar">';
+            normalized.forEach((v, i) => {
+                const pct = (v * 100).toFixed(1);
+                html += `<div class="allocation-segment" style="width: ${pct}%; background: ${COLORS[i % COLORS.length]};" title="${tickers[i]}: ${pct}%">${parseFloat(pct) > 5 ? pct + '%' : ''}</div>`;
+            });
+            html += '</div>';
+
+            html += '<div class="legend">';
+            normalized.forEach((v, i) => {
+                const pct = (v * 100).toFixed(2);
+                html += `<div class="legend-item"><div class="legend-color" style="background: ${COLORS[i % COLORS.length]};"></div><span>${tickers[i]}: ${pct}%</span></div>`;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        async function runSimulation() {
+            if (!currentStats) {
+                showNotification('Load statistics first', 'error');
+                return;
+            }
+
+            if (currentRegressor.length !== currentStats.n_regressors) {
+                showNotification(`Dimension mismatch: expected ${currentStats.n_regressors}, got ${currentRegressor.length}`, 'error');
+                return;
+            }
+
+            const nSteps = parseInt(document.getElementById('sim-steps').value);
+            const nPaths = parseInt(document.getElementById('sim-paths').value);
+
+            const resultEl = document.getElementById('sim-result');
+            resultEl.innerHTML = '<div class="loading"></div>';
+            resultEl.className = 'result-box';
+
+            try {
+                const res = await fetch(API + '/api/model/simulate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        G: currentStats.G,
+                        H: currentStats.H,
+                        Delta: currentStats.Delta,
+                        a_prev: currentStats.a_prev,
+                        regressor: currentRegressor,
+                        regressor_meta: currentRegressorMeta,
+                        n_assets: currentStats.n_assets,
+                        n_steps: nSteps,
+                        n_paths: nPaths
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    resultEl.innerHTML = `Simulated ${data.n_paths} paths × ${data.n_steps} steps`;
+                    resultEl.classList.add('success');
+                    showVisualization(data.paths);
+                    showNotification('Simulation complete!');
+                } else {
+                    resultEl.innerHTML = `Error: ${data.error}`;
+                    resultEl.classList.add('error');
+                }
+            } catch (e) {
+                resultEl.innerHTML = `Error: ${e.message}`;
+                resultEl.classList.add('error');
+            }
+        }
+
+        function showVisualization(paths) {
+            const panel = document.getElementById('viz-panel');
+            panel.style.display = 'block';
+            panel.scrollIntoView({behavior: 'smooth'});
+
+            const tickers = currentStats.tickers || Array.from({length: paths[0][0].length}, (_, i) => `Asset ${i+1}`);
+            const datasets = [];
+
+            for (let assetIdx = 0; assetIdx < paths[0][0].length; assetIdx++) {
+                for (let pathIdx = 0; pathIdx < paths.length; pathIdx++) {
+                    const pathReturns = paths[pathIdx].map(step => step[assetIdx]);
+                    const cumulative = [0];
+                    pathReturns.forEach(r => cumulative.push(cumulative[cumulative.length - 1] + r));
+
+                    datasets.push({
+                        label: `${tickers[assetIdx]} - Path ${pathIdx + 1}`,
+                        data: cumulative,
+                        borderColor: COLORS[assetIdx % COLORS.length],
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.4,
+                        borderDash: pathIdx > 0 ? [5, 5] : []
+                    });
+                }
+            }
+
+            const ctx = document.getElementById('chart-canvas').getContext('2d');
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: paths[0].length + 1}, (_, i) => i),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Simulated Return Paths',
+                            font: {size: 18}
+                        },
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {display: true, text: 'Time Step'}
+                        },
+                        y: {
+                            title: {display: true, text: 'Cumulative Return'},
+                            ticks: {
+                                callback: v => (v * 100).toFixed(2) + '%'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function updateModel() {
+            if (!currentStats || !currentStats.H_new) {
+                showNotification('Run model first', 'error');
+                return;
+            }
+
+            const observedReturns = [];
+            for (let i = 0; i < currentStats.n_assets; i++) {
+                const val = parseFloat(document.getElementById(`return-${i}`).value);
+                if (isNaN(val)) {
+                    showNotification(`Invalid return for asset ${i+1}`, 'error');
+                    return;
+                }
+                observedReturns.push(val);
+            }
+
+            const resultEl = document.getElementById('update-result');
+            resultEl.innerHTML = '<div class="loading"></div>';
+            resultEl.className = 'result-box';
+
+            try {
+                const res = await fetch(API + '/api/model/update', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        G: currentStats.G,
+                        H: currentStats.H,
+                        H_new: currentStats.H_new,
+                        Delta: currentStats.Delta,
+                        observed_returns: observedReturns,
+                        regressor: currentRegressor
+                    })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentStats.G = data.G_update;
+                    currentStats.Delta = data.Delta_update;
+                    currentStats.H = data.H_update;
+
+                    resultEl.innerHTML = `<strong>Statistics Updated!</strong><br>New Delta: ${data.Delta_update.toFixed(4)}<br><small>Don't forget to save!</small>`;
+                    resultEl.classList.add('success');
+                    displayStatistics();
+                    showNotification('Model updated!');
+                } else {
+                    resultEl.innerHTML = `Error: ${data.error}`;
+                    resultEl.classList.add('error');
+                }
+            } catch (e) {
+                resultEl.innerHTML = `Error: ${e.message}`;
+                resultEl.classList.add('error');
+            }
+        }
+
+        window.onclick = e => {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        };
+    </script>
+</body>
+</html>
