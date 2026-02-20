@@ -23,7 +23,7 @@ echo.
 
 REM Install packages
 echo Installing required packages...
-python -m pip install flask flask-cors numpy scipy --quiet
+python -m pip install flask flask-cors numpy yfinance pandas scipy --quiet
 
 if not exist "saved_statistics" mkdir saved_statistics
 

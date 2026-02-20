@@ -7,6 +7,8 @@ from flask_cors import CORS
 import numpy as np
 import json
 import os
+import yfinance as yf
+import pandas as pd
 from datetime import datetime
 import traceback
 from numpy.linalg import det
@@ -271,10 +273,13 @@ def simulate_model():
                 for i, meta in enumerate(regressor_meta):
                     if meta['type'] == 'return':
                         if meta['lag'] == 0:
-                            x_next[i] = np.mean(y_sample)
+                            x_next[i] = y_sample[meta['asset']]
                         else:
+                            # Shift previous lags down for this specific asset
                             prev_idx = next(j for j, m in enumerate(regressor_meta)
-                                            if m['type'] == 'return' and m['lag'] == meta['lag'] - 1)
+                                            if m['type'] == 'return' and
+                                            m['lag'] == meta['lag'] - 1 and
+                                            m['asset'] == meta['asset'])
                             x_next[i] = x_current[prev_idx]
 
                     elif meta['type'] == 'sine':
@@ -381,6 +386,35 @@ def get_correlation():
             'success': True,
             'correlation': correlation.tolist(),
             'sigma': sigma.tolist()
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# API calls function
+@app.route('/api/data/fetch', methods=['POST'])
+def fetch_market_data():
+    try:
+        tickers = request.json.get('tickers', [])
+        if not tickers:
+            return jsonify({'success': False, 'error': 'No tickers provided'}), 400
+
+        df = yf.download(tickers, period="15d", progress=False)['Close']
+        if isinstance(df, pd.Series):
+            df = df.to_frame(name=tickers[0])
+
+        valid_tickers = [t for t in tickers if t in df.columns]
+        if valid_tickers:
+            df = df[valid_tickers]
+
+        mean_prices = df.mean(axis=1).dropna().tail(10).tolist()
+        returns_df = df.pct_change().dropna()
+        recent_returns = returns_df.iloc[::-1].head(10).fillna(0).values.tolist()
+
+        return jsonify({
+            'success': True,
+            'returns': recent_returns,
+            'mean_prices': mean_prices
         })
     except Exception as e:
         traceback.print_exc()
