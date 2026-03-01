@@ -36,7 +36,7 @@ gantt
 
     section Phase 2: Advanced Intelligence (Next)
     Mixed Gaussian Models      :active,    p2a, 2026-03-01, 150d
-    Success Metrics            :           p2b, after p2a, 90d
+    VRS Improvement            :           p2b, after p2a, 90d
     NLP Sentiment Integration  :           p2c, after p2b, 150d
     App Development            :active,    p2d, 2026-02-01, 600d
 
