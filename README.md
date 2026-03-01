@@ -18,8 +18,8 @@
     'doneTaskBkgColor': '#2ea44f',
     'doneTaskBorderColor': '#2ea44f',
     
-    'activeTaskBkgColor': '#0969da',
-    'activeTaskBorderColor': '#0969da'
+    'activeTaskBkgColor': '#898F96',
+    'activeTaskBorderColor': '#A15CF2'
   }
 } }%%
 gantt
@@ -35,11 +35,12 @@ gantt
     Valuation Ranking System   :done,    des5, 2025-08-01, 2026-01-01
 
     section Phase 2: Advanced Intelligence (Next)
-    Mixed Gaussian Models      :active    p2a, 2026-03-01, 120d
-    Success Metrics            :          p2b, after p2a, 90d
-    NLP Sentiment Integration  :          p2c, after p2b, 120d
+    Mixed Gaussian Models      :active,    p2a, 2026-03-01, 150d
+    Success Metrics            :           p2b, after p2a, 90d
+    NLP Sentiment Integration  :           p2c, after p2b, 150d
+    App Development            :active,    p2d, 2026-02-01, 600d
 
     section Phase 3: Convergence (Future)
     Adaptive Mixing            :         p3a, after p2c, 120d
-    User Preferences           :         p3b, after p3a, 90d
+    User Preferences           :         p3b, after p3a, 110d
 ```
