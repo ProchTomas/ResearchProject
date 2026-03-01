@@ -31,7 +31,7 @@ gantt
     Linear ARX Model           :done,    des1, 2024-09-01, 2025-06-01
     GA                         :done,    des2, 2025-03-01, 2025-05-01
     Adaptive Forgetting        :done,    des3, 2025-06-01, 2025-11-01
-    Seq Quadratic Programming  :done,    des4, 2025-09-01, 2026-02-01
+    Seq Quadratic Programming  :done,    des4, 2025-08-01, 2026-02-01
     Valuation Ranking System   :done,    des5, 2025-08-01, 2026-01-01
 
     section Phase 2: Advanced Intelligence (Next)
