@@ -1,62 +1,45 @@
 ```mermaid
-graph TD
-    %% Styles
-    classDef current fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
-    classDef future fill:#fff3cd,stroke:#ffc107,stroke-width:2px,stroke-dasharray: 5 5,color:#856404;
-    classDef merge fill:#e2e3e5,stroke:#383d41,stroke-width:2px,color:#383d41;
-    classDef user fill:#cce5ff,stroke:#004085,stroke-width:2px,color:#004085;
+%%{init: { 
+  'themeVariables': {
+    'primaryColor': '#7A7A7A',
+    'primaryTextColor': '#24292e',
+    'primaryBorderColor': '#d1d5da',
+    'lineColor': '#f03a17',
+    'secondaryColor': '#fff',
+    'tertiaryColor': '#fff',
+    
+    'titleColor': '#fff',
+    'sectionBkgColor': '#A1A1A1',
+    'sectionBkgColor2': '#fff',
+    
+    'taskBkgColor': '#898F96',
+    'taskTextLightColor': '#24292e',
+    
+    'doneTaskBkgColor': '#2ea44f',
+    'doneTaskBorderColor': '#2ea44f',
+    
+    'activeTaskBkgColor': '#0969da',
+    'activeTaskBorderColor': '#0969da'
+  }
+} }%%
+gantt
+    title Portfolio Optimization Roadmap
+    dateFormat  YYYY-MM-DD
+    axisFormat  %Y
+    
+    section Phase 1: Core Backend (Live)
+    Linear ARX Model           :done,    des1, 2024-09-01, 2025-06-01
+    GA                         :done,    des2, 2025-03-01, 2025-05-01
+    Adaptive Forgetting        :done,    des3, 2025-06-01, 2025-11-01
+    Seq Quadratic Programming  :done,    des4, 2025-09-01, 2026-02-01
+    Valuation Ranking System   :done,    des5, 2025-08-01, 2026-01-01
 
-    %% User Layer (Future)
-    subgraph UserLayer [User Preferences & Constraints]
-        U1(Risk Aversion / Gut Feeling) ::: user
-        U2(Insider Insights / Discounts) ::: user
-    end
+    section Phase 2: Advanced Intelligence (Next)
+    Mixed Gaussian Models      :active    p2a, 2026-03-01, 120d
+    Success Metrics            :          p2b, after p2a, 90d
+    NLP Sentiment Integration  :          p2c, after p2b, 120d
 
-    %% The Mixing Engine (Convergence Point)
-    subgraph Mixing [Decision Engine]
-        MIX{Adaptive Opinion Mixing} ::: future
-        NOTE[Method: Robust Regression / Bayesian Dirichlet] ::: future
-        SQP(Constrained Sequential <br/>Quadratic Programming) ::: current
-        ALLOC([Final Optimized Allocation]) ::: merge
-    end
-
-    %% Branch 1: Technical
-    subgraph Tech [Technical Branch]
-        direction TB
-        ARX(Linear Auto-Regression <br/> w/ Exogenous Variables) ::: current
-        GA(Genetic Algorithm <br/> Structure Estimation) ::: current
-        FORGET(Optimized Forgetting) ::: current
-        
-        %% Future Tech
-        GMM(Mixed Gaussian Models) ::: future
-        NLP(NLP Sentiment Analysis) ::: future
-        
-        %% Tech Flow
-        GA --> ARX
-        FORGET --> ARX
-        ARX --> SQP
-        GMM -.-> MIX
-        NLP -.-> MIX
-    end
-
-    %% Branch 2: Fundamental
-    subgraph Fund [Fundamental Branch]
-        direction TB
-        VAL(Company Valuation Ranking) ::: current
-        EXP(Expert Opinions) ::: future
-        METRIC(Success Metrics & <br/> Param Optimization) ::: future
-        
-        %% Fund Flow
-        VAL -.-> METRIC
-        METRIC -.-> MIX
-        EXP -.-> MIX
-    end
-
-    %% Main Connections
-    SQP --> MIX
-    MIX --> ALLOC
-    UserLayer -.-> ALLOC
-
-    %% Legend
-    linkStyle default stroke-width:2px,fill:none,stroke:#333;
+    section Phase 3: Convergence (Future)
+    Adaptive Mixing            :         p3a, after p2c, 120d
+    User Preferences           :         p3b, after p3a, 90d
 ```
