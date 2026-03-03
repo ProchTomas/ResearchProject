@@ -847,6 +847,8 @@
                         G: currentStats.G,
                         H: currentStats.H,
                         Delta: currentStats.Delta,
+                        G0: currentStats.G0,
+                        Delta0: currentStats.Delta0,
                         a_prev: currentStats.a_prev,
                         regressor: currentRegressor,
                         n_assets: currentStats.n_assets
@@ -1038,9 +1040,11 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         G: currentStats.G,
+                        G0: currentStats.G0,
                         H: currentStats.H,
                         H_new: currentStats.H_new,
                         Delta: currentStats.Delta,
+                        Delta0: currentStats.Delta0,
                         observed_returns: observedReturns,
                         regressor: currentRegressor
                     })
