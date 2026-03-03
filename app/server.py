@@ -180,6 +180,8 @@ def initialize_statistics():
             'n_assets': n,
             'n_regressors': rho,
             'G': (1e-2 * np.eye(n + rho)).tolist(),
+            'G0': (1e-3 * np.eye(n + rho)).tolist(),
+            'Delta0': 14.0,
             'H': (1e-1 * np.eye(3*n + rho)).tolist(),
             'Delta': 5.0,
             'a_prev': (np.ones(n) / n).tolist(),
@@ -200,7 +202,7 @@ def run_model():
         a_prev = np.array(data['a_prev'])
         x = np.array(data['regressor'])
         n = int(data['n_assets'])
-        
+
         # Run model
         params = {
             'mu': 0.9,
@@ -208,8 +210,8 @@ def run_model():
             'beta0': 0.05,
             'phi0': 0.1,
             'D': 2e-4 * np.eye(n),
-            'G_0': 1e-3 * np.eye(len(g)),
-            'delta0': 14,
+            'G_0': np.array(data['G0']),
+            'delta0': float(data['Delta0']),
         }
         
         opt_a, H_new = model_run(params, g, x, delta, a_prev, h, n)
@@ -314,15 +316,15 @@ def update_model():
         delta = float(data['Delta'])
         y = np.array(data['observed_returns'])
         x = np.array(data['regressor'])
-        
+
         params = {
             'mu': 0.9,
             'alpha0': 0.09,
             'beta0': 0.05,
             'phi0': 0.1,
             'D': 2e-4 * np.eye(len(y)),
-            'G_0': 1e-3 * np.eye(len(g)),
-            'delta0': 14,
+            'G_0': np.array(data['G0']),
+            'delta0': float(data['Delta0']),
         }
         
         g_update, delta_update, h_update = update(params, g, y, x, delta, h, h_new)
