@@ -36,7 +36,7 @@ def update_G(G_prev, d, G0, alpha, beta):
         G_new = R * signs.reshape(-1, 1)
         return G_new
     elif 1-alpha-beta < 1e-17:
-        u = np.sqrt(beta) + d.reshape(-1, 1)
+        u = np.sqrt(beta) * d.reshape(-1, 1)
         H = np.hstack([u, np.sqrt(alpha+beta) * G_prev])
         R, _ = rq(H, mode="economic")  # R will be an upper-triangular matrix
 
@@ -521,4 +521,5 @@ def optimize_H(phi_0, h_prev, h_new):
 
     phi_opt = res.x
     return phi_opt * h_prev + (1 - phi_opt) * h_new
+
 
