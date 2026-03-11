@@ -79,12 +79,12 @@ def func_F_phi(alpha, beta, gamma, arguments):
     f = alpha*(np.log(alpha)-np.log(alpha_0)) + beta*(np.log(beta)-np.log(beta_0)) + gamma*(np.log(gamma)-np.log(gamma_0))
     s = 0
     for j in range(1, N+1):
-        s += gammaln((delta_tilde-rho+N+2-j)/2) - alpha*gammaln((delta_1+1-rho+N+2-j)/2) \
-             - beta*gammaln((delta_1+1-rho+N+2-j)/2) - gamma*gammaln((delta_0-rho+N+2-j)/2)
+        s += - gammaln((delta_tilde-rho+N+2-j)/2) + alpha*gammaln((delta_1+1-rho+N+2-j)/2) \
+             + beta*gammaln((delta_1+1-rho+N+2-j)/2) + gamma*gammaln((delta_0-rho+N+2-j)/2)
     f += s
-    f += (alpha+beta)*N*np.log(det_gx) + beta*N/2*np.log(1+zeta) + gamma*N*np.log(det_gx_0) - N/2*np.log(detV_tilde)\
-    + ((alpha+beta)*(delta_1-rho+N+1)+beta)*np.log(det_gf) + beta*((delta_1-rho+N+2)/2)*np.log(1+kappa/(1+zeta))\
-    + gamma*(delta_0-rho+N+1)*np.log(det_gf_0)-(delta_tilde-rho+N+1)/2*np.log(detL_tilde)
+    f += - (alpha+beta)*N*np.log(det_gx) + beta*N/2*np.log(1+zeta) - gamma*N*np.log(det_gx_0) + N/2*np.log(detV_tilde)\
+    - ((alpha+beta)*(delta_1-rho+N+1)+beta)*np.log(det_gf) - beta*((delta_1-rho+N+2)/2)*np.log(1+kappa/(1+zeta))\
+    - gamma*(delta_0-rho+N+1)*np.log(det_gf_0) + (delta_tilde-rho+N+1)/2*np.log(detL_tilde)
     return f
 
 def map_to_simplex(y):
@@ -507,4 +507,5 @@ def optimize_H(phi_0, h_prev, h_new):
 
     phi_opt = res.x
     return phi_opt * h_prev + (1 - phi_opt) * h_new
+
 
