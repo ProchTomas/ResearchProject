@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import cho_factor, cho_solve
 from scipy.optimize import root_scalar
 from scipy.optimize import minimize_scalar
+from scipy.stats import f as f_dist
 
 # HELPER FUNCTIONS
 
@@ -36,7 +37,7 @@ def update_G(G_prev, d, G0, alpha, beta):
         G_new = R * signs.reshape(-1, 1)
         return G_new
     elif 1-alpha-beta < 1e-17:
-        u = np.sqrt(beta) * d.reshape(-1, 1)
+        u = np.sqrt(beta) + d.reshape(-1, 1)
         H = np.hstack([u, np.sqrt(alpha+beta) * G_prev])
         R, _ = rq(H, mode="economic")  # R will be an upper-triangular matrix
 
@@ -80,11 +81,11 @@ def func_F_phi(alpha, beta, gamma, arguments):
     f = alpha*(np.log(alpha)-np.log(alpha_0)) + beta*(np.log(beta)-np.log(beta_0)) + gamma*(np.log(gamma)-np.log(gamma_0))
     s = 0
     for j in range(1, N+1):
-        s += - gammaln((delta_tilde-rho+N+2-j)/2) + alpha*gammaln((delta_1+1-rho+N+2-j)/2) \
+        s += - gammaln((delta_tilde-rho+N+2-j)/2) + alpha*gammaln((delta_1-rho+N+2-j)/2) \
              + beta*gammaln((delta_1+1-rho+N+2-j)/2) + gamma*gammaln((delta_0-rho+N+2-j)/2)
     f += s
     f += - (alpha+beta)*N*np.log(det_gx) + beta*N/2*np.log(1+zeta) - gamma*N*np.log(det_gx_0) + N/2*np.log(detV_tilde)\
-    - ((alpha+beta)*(delta_1-rho+N+1)+beta)*np.log(det_gf) - beta*((delta_1-rho+N+2)/2)*np.log(1+kappa/(1+zeta))\
+    - ((alpha+beta)*(delta_1-rho+N+1)+beta)*np.log(det_gf) - beta*((delta_1-rho+N+1)/2)*np.log(1+kappa/(1+zeta))\
     - gamma*(delta_0-rho+N+1)*np.log(det_gf_0) + (delta_tilde-rho+N+1)/2*np.log(detL_tilde)
     return f
 
@@ -484,8 +485,6 @@ def inv_and_logdet_spd(A, eps=1e-8):
     logdet = np.sum(np.log(w_clipped))
     return A_inv, logdet
 
-
-
 def func_F_for_H(phi, phi_0, h_new, h_prev):
     if not (0.0 < phi < 1.0):
         return np.inf
@@ -520,7 +519,123 @@ def optimize_H(phi_0, h_prev, h_new):
     )
 
     phi_opt = res.x
-    return phi_opt * h_prev + (1 - phi_opt) * h_new
+    # return phi_opt * h_prev + (1 - phi_opt) * h_new, phi_opt
+    return phi_opt * h_prev + (1 - phi_opt) * h_new, phi_opt
 
 
+def func_F_forecast(phi, phi0, y_hat, v_hat):
+  """
+  arg:
+    phi: numpy array of mixing factors
+    phi0: numpy array of prior mixing factors
+    y_hat: numpy array of individual forecasts
+    v_hat: numpy array of individual variances
+  returns:
+    F(phi) for forecast mixing
+  """
+  kl = 0
+  for i in range(len(phi)):
+    kl += phi[i]*(np.log(phi[i])-np.log(phi0[i]))
+  f = 2*kl
 
+  v = 1/np.sum(phi / v_hat)
+  y = np.sum(y_hat * phi / v_hat)
+
+  for i in range(len(phi)):
+    f += phi[i]*y_hat[i]**2/v_hat[i] + phi[i]*np.log(v_hat[i])
+
+  f += -np.log(v) - y**2*v
+
+  return f
+
+
+def opt_forecast_weights(y_hat, v_hat, phi0, n_restarts=200, seed=0):
+    """
+    Finds phi minimizing func_F_forecast subject to phi >= 0, sum(phi) = 1.
+    Uses multiple random restarts with SLSQP to avoid local minima.
+    """
+    k     = len(y_hat)
+    y_hat = np.array(y_hat, dtype=float)
+    v_hat = np.array(v_hat, dtype=float)
+    phi0  = np.array(phi0,  dtype=float)
+    phi0  = phi0 / phi0.sum()
+    rng   = np.random.default_rng(seed)
+
+    def stable_objective(phi):
+        # Clip inside objective so log never sees 0,
+        # without blocking the optimizer from reaching boundaries
+        phi_safe = np.clip(phi, 1e-300, 1.0)
+        return func_F_forecast(phi_safe, phi0, y_hat, v_hat)
+
+    constraints = {'type': 'eq', 'fun': lambda phi: np.sum(phi) - 1.0}
+    bounds      = [(0.0, 1.0)] * k
+
+    best_val    = np.inf
+    best_phi    = phi0.copy()
+
+    # Starting points: phi0, uniform, and random Dirichlet samples
+    starts = [phi0, np.ones(k) / k]
+    starts += [rng.dirichlet(np.ones(k)) for _ in range(n_restarts)]
+
+    for phi_init in starts:
+        phi_init = np.array(phi_init, dtype=float)
+        phi_init = phi_init / phi_init.sum()
+        try:
+            result = minimize(stable_objective, phi_init,
+                              method='SLSQP',
+                              bounds=bounds,
+                              constraints=constraints,
+                              options={'ftol': 1e-12,
+                                       'maxiter': 2000,
+                                       'disp': False})
+            if result.success and result.fun < best_val:
+                best_val = result.fun
+                best_phi = result.x
+        except Exception:
+            continue
+
+    # Clean up numerical noise
+    best_phi = np.clip(best_phi, 0.0, 1.0)
+    best_phi /= best_phi.sum()
+    return best_phi
+
+
+def compute_eta(G_y_prev, G_x_prev, y, y_hat, x, delta_prev, rho, N=1):
+    """
+    Computes the stress signal eta_t in [0,1].
+
+    Args:
+        G_y_prev:  Upper triangular G_y from previous step (N x N)
+        G_x_prev:  Upper triangular G_x from previous step (rho x rho)
+        y:         Current response vector (N,)
+        y_hat:     Current prediction vector (N,)
+        x:         Current regressor vector (rho,)
+        delta_prev: Counting statistic from previous step
+        rho:       Number of regressors (l_z in your notebook)
+        N:         Response dimension (n in your notebook)
+
+    Returns:
+        eta_t: stress signal in [0, 1]
+    """
+    e_hat = y - y_hat
+
+    G_y_inv_e = solve_triangular(G_y_prev, e_hat, lower=False)
+    G_x_inv_x = solve_triangular(G_x_prev, x, lower=False)
+
+    kappa = float(G_y_inv_e @ G_y_inv_e)  # e' * Lambda^{-1} * e
+    zeta = float(G_x_inv_x @ G_x_inv_x)  # x' * V_x^{-1} * x
+
+    # Hotelling T^2, corrected for regressor leverage
+    df1 = N
+    df2 = delta_prev - rho + 1  # must be > 0
+
+    if df2 <= 0:
+        # Not enough data yet to have a meaningful reference distribution
+        return 0.0
+
+    T2 = (delta_prev - rho + N + 1) / (N * (1 + zeta)) * kappa
+
+    F_stat = T2 * df2 / (df1 * (delta_prev - rho + N + 1))
+
+    eta = f_dist.cdf(F_stat, df1, df2)
+    return eta

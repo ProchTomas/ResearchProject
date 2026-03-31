@@ -8,7 +8,28 @@ import eval
 import time
 from numpy.linalg import det as det
 from scipy.linalg import cholesky, qr, solve_triangular
-import wandb
+# import wandb
+import json
+
+
+def clustered_volatility(tau, n, low=-0.01, high=0.01, cluster_prob=0.01, cluster_len=5, seed=None):
+    """Generates an array with clustered volatility."""
+    vol_arr = []
+    rng = np.random.default_rng(seed)
+    for _ in range(n):
+        arr = np.zeros(tau)
+        t = 0
+        while t < tau:
+            if rng.random() < cluster_prob:
+                length = min(rng.integers(cluster_len // 2, cluster_len * 2), tau - t)
+                arr[t:t + length] = rng.normal(0, (high - low), size=length)
+                t += length
+            else:
+                arr[t] = rng.normal(0, 0.1)
+                t += 1
+        arr = np.clip(arr, low, high)
+        vol_arr.append(arr)
+    return np.array([list(x) for x in zip(*vol_arr)])
 
 
 def gather_data(stocks):
@@ -43,288 +64,230 @@ def gather_data(stocks):
     return s
 
 
-
-def model_run(t_0, terminal_time, y, x, V_prior, G_prior, delta_0, alpha_0, beta_0, gamma_0, phi_0, N, rho, tckrs):
-    """Runs the model on past data
-    :arg
-        t_0: initial time
-        terminal_time: terminal time for the simulation
-        y: array of response variables
-        x: array of regressor values
-        V_prior: prior statistics
-        G_prior: prior square-root of the statistics
-        delta_0: prior degrees of freedom
-        alpha_0: prior forgetting parameters
-        beta_0
-        gamma_0
-        N: dim(y)
+def get_current_regressor(y_hist, p, step, max_lookback=40, is_toy=False, X_toy=None):
     """
-    G = G_prior.copy()
-    G_0 = G_prior.copy()
-    V_naive = V_prior.copy()
-    V_simple = G_prior.copy()
-    H = 1e-5*np.eye(3*N+rho)
-    H_greedy = H.copy()
+    Slices history strictly up to t-1 for real data,
+    or returns the perfectly aligned X[t] for the toy example.
+    """
+    if is_toy:
+        # In the toy example, X[t] is already constructed to predict y[t]
+        return X_toy[step]
 
-    delta_t = delta_0
-    delta_simple = delta_0
-    Gyy_0 = G_0[:N, :N]
-    Gyx_0 = G_0[:N, N:]
-    Gxx_0 = G_0[N:, N:]
+    if step <= p:
+        # Burn-in period for real data
+        dummy_window = np.zeros((max_lookback, y_hist.shape[1]))
+        return indicators.build_step_regressor(dummy_window, p, step)
 
-    sign_accuracy = np.zeros(N)
-    mse = 0
-    residuals = []
-    predictions = []
-    actions = []
-    a_prev = np.ones(N)/N
-    a_even = a_prev.copy()
-    actions.append(a_prev)
-    actions_agg = []
-    actions_agg.append(a_prev)
-    actions_even = []
-    actions_even.append(a_prev)
+    # Real data: Strict slice up to t-1
+    start_idx = max(0, step - max_lookback)
+    window = y_hist[start_idx:step]
 
-    D = 0.002*np.eye(N)
-    # D = np.diag(np.array([0.002, 0.01]))
-    Q_sqrt_greedy = act.get_loss_matrix_greedy(N, rho, D, 0, 0)
-    A, B, X = act.initialize_evolution_matrices(N, rho)
-    rewards = [1]
-    rewards_agg = [1]
-    rewards_even = [1]
+    return indicators.build_step_regressor(window, p, step)
 
-    omega_arr = []
-    forget_params = []
-    sr = []
-    sr_a = []
-    sr_u = []
 
-    for t in range(t_0, terminal_time):
-        # 0) Partition G (upper triangular)
-        Gyy = G[:N, :N]
-        Gyx = G[:N, N:]
-        Gxx = G[N:, N:]
+def build_forget_args(alpha_0, beta_0, gamma_0, delta_0, t, G, G_0, y_t, y_hat, x_t, Gxx_mix):
+    """Helper to assemble the massive argument tuple for optimal forgetting."""
+    N = len(y_t)
+    Gyy, Gxx = G[:N, :N], G[N:, N:]
+    Gyy_0, Gxx_0 = G_0[:N, :N], G_0[N:, N:]
+    e_hat = y_hat - y_t
 
-        # 1) Get point estimates of P, Lambda
+    Gxx_sq = Gxx @ Gxx.T
+    Gyy_sq = Gyy @ Gyy.T
+    Gxx_inv = np.linalg.inv(Gxx_sq)
+
+    return (
+        alpha_0, beta_0, gamma_0, delta_0 + t, delta_0,
+        Gxx, det(Gxx), Gxx_0, det(Gxx_0),
+        Gyy, det(Gyy), Gyy_0, det(Gyy_0),
+        Gxx_sq, Gxx_sq + np.outer(x_t, x_t), Gxx_0 @ Gxx_0.T,
+        Gyy_sq, Gyy_sq + 1 / (1 + x_t.T @ Gxx_inv @ x_t) * np.outer(e_hat, e_hat),
+        Gyy_0 @ Gyy_0.T, x_t.T @ np.linalg.inv(Gxx_mix @ Gxx_mix.T) @ x_t,
+        e_hat.T @ np.linalg.inv(Gyy_sq) @ e_hat
+    )
+
+
+def step_predict(models, x_t, N):
+    """Generates mixed predictions from multiple models."""
+    y_hats, v_hats, Ps, Gxxs = [], [], [], []
+
+    for mod in models:
+        G, delta = mod['G'], mod['delta']
+        Gyy, Gyx, Gxx = G[:N, :N], G[:N, N:], G[N:, N:]
 
         P = Gyx @ np.linalg.inv(Gxx)
-        y_hat = P@x[t]
-        e_t = y[t] - y_hat
-        # print("real observation:", y[t], "predicted observation:", y_hat, "used regressor:", x[t])
-        residuals.append(e_t)
-        predictions.append(y_hat)
-        for j in range(N):
-            if np.sign(y_hat[j]) == np.sign(y[t][j]):
-                sign_accuracy[j] += 1
+        y_hat = P @ x_t
+        v_hat = Gyy @ Gyy / (delta - 2) * (1 + x_t.T @ np.linalg.inv(Gxx @ Gxx.T) @ x_t)
 
-        mse += np.dot(e_t, e_t)
-        # 2) Optimize allocation
+        y_hats.append(y_hat)
+        v_hats.append(v_hat)
+        Ps.append(P)
+        Gxxs.append(Gxx)
 
-        sigma = 1 / delta_t * Gyy @ Gyy.T
-        omega = func.get_omega(D, sigma, actions[-1])
-        omega_arr.append(omega)
-        Q_sqrt = act.get_loss_matrix(N, rho, D, sigma, omega)
-        A = act.update_evolution_matrix(N, rho, P, X, A)
-        s_t = np.hstack((actions[-1], np.zeros(N), y_hat, x[t]))
-        s_t_greedy = np.hstack((actions_agg[-1], np.zeros(N), y_hat, x[t]))
+    if len(models) > 1:
+        opt_weights = func.opt_forecast_weights(np.array(y_hats), np.array(v_hats), np.ones(len(models)) / len(models))
 
-        a_t, H_new = act.action_generation(N, rho, s_t, B, Q_sqrt, A, 10, H,  P, Gxx, np.linalg.inv(sigma), sampling=False)
+        # Aggregate
+        P_mix = sum(w * P for w, P in zip(opt_weights, Ps))
+        Gxx_mix = sum(w * Gxx for w, Gxx in zip(opt_weights, Gxxs))
+        y_hat_mix = P_mix @ x_t
 
-        a_t_greedy, H_new_greedy = act.action_generation(N, rho, s_t_greedy, B, Q_sqrt_greedy, A, 10, H_greedy,  P, Gxx, np.linalg.inv(sigma), sampling=False)
-        actions_agg.append(a_t_greedy)
-        actions.append(a_t)
+        sigma = sum(w * (1 / mod['delta'] * mod['G'][:N, :N] @ mod['G'][:N, :N].T) for w, mod in zip(opt_weights, models))
+        return y_hat_mix, P_mix, sigma, Gxx_mix, y_hats, opt_weights
+    else:
+        sigma = 1/mod['delta']*mod['G'][:N, :N] @ mod['G'][:N, :N].T
 
-        # print("action for: ", y[t], "is: ", a_t, "estimated y: ", y_hat)
-        tr_c = 0
-        tr_c_agg = 0
-        for i in range(N):
-            tr_c += D[i][i] * np.abs(actions[-1][i] - a_t[i])
-            tr_c_agg += D[i][i] * np.abs(actions_agg[-1][i] - a_t_greedy[i])
-        reward = (1 + a_t @ y[t]) * (1 - tr_c)
-        reward_agg = (1 + a_t_greedy @ y[t]) * (1 - tr_c_agg)
-        reward_even = (1 + actions_even[-1] @ y[t])
-        rewards.append(rewards[-1] * reward)
-        rewards_agg.append(rewards_agg[-1] * reward_agg)
-        rewards_even.append(rewards_even[-1] * reward_even)
-
-        c = np.dot(actions_even[-1], 1 + y[t])
-        u_allocation = [a * (1+b) / c for a, b in zip(actions_agg[-1], y[t])]
-        actions_even.append(u_allocation)
-
-        # 3) Update G
-
-        d = np.concatenate((y[t], x[t]))
-
-        # gather necessary arguments for function F(phi)
-        args = (alpha_0, beta_0, gamma_0, delta_0+t, delta_0, Gxx, det(Gxx), Gxx_0, det(Gxx_0), Gyy, det(Gyy), Gyy_0,
-                det(Gyy_0), G @ G.T, G @ G.T + np.outer(d, d), G_0 @ G_0.T, Gyy @ Gyy.T,
-                Gyy @ Gyy.T + 1/(1+x[t].T @ np.linalg.inv(Gxx @ Gxx.T) @ x[t])*e_t @ e_t.T,
-                Gyy_0 @ Gyy_0.T, x[t].T @ np.linalg.inv(Gxx @ Gxx.T) @ x[t],
-                e_t.T @ np.linalg.inv(Gyy @ Gyy.T) @ e_t)
-
-        # Vyy = V_simple[:N, :N]
-        # Vyx = V_simple[:N, N:]
-        # Vxx = V_simple[N:, N:]
-
-        # args = (alpha_0, beta_0, gamma_0, delta_0 + t, delta_0, Gxx, det(Gxx), Vxx, det(Vxx), Gyy, det(Gyy), Vyy,
-        #         det(Vyy), G @ G.T, G @ G.T + np.outer(d, d), V_simple @ V_simple.T, Gyy @ Gyy.T,
-        #         Gyy @ Gyy.T + 1 / (1 + x[t].T @ np.linalg.inv(Gxx @ Gxx.T) @ x[t]) * e_t @ e_t.T,
-        #         Vyy @ Vyy.T, x[t].T @ np.linalg.inv(Gxx @ Gxx.T) @ x[t],
-        #         e_t.T @ np.linalg.inv(Gyy @ Gyy.T) @ e_t)
-
-        # Compute the optimal forgetting factors, gamma = 1 - alpha - beta
-        alpha, beta, gamma = func.opt_forget_factors(args)
-        forget_params.append((alpha, beta, gamma))
-        # if gamma > 0.9:
-        #     V_simple = func.update_G(V_simple, d, G_0, 0, 0)
-
-        # print("alpha: ", alpha, "beta: ", beta, "gamma: ", gamma)
-
-        G = func.update_G(G, d, V_simple, alpha, beta)
-        delta_t = (alpha+beta)* delta_t + beta + gamma * delta_0
-
-        # H = func.optimize_H(phi_0, H, H_new)
-        # H_greedy = func.optimize_H(phi_0, H, H_new_greedy)
-
-        # V_naive = (alpha + beta) * V_naive + beta * np.outer(d, d) + gamma * V_prior
-        md, vr, ar = eval.risk_metrics(rewards)
-        md_a, vr_a, ar_a = eval.risk_metrics(rewards_agg)
-        md_u, vr_u, ar_u = eval.risk_metrics(rewards_even)
-        sr.append(ar/vr)
-        sr_a.append(ar_a/vr_a)
-        sr_u.append(ar_u/vr_u)
+        return y_hat, P, sigma, Gxx, y_hats, 1.0
 
 
+def step_allocate(N, rho, y_hat, x_t, sigma, P, Gxx_mix, a_prev, A, B, X, H_prev, D, h, thompson=False, greedy=False):
+    """Finds optimal portfolio allocation."""
+    omega = func.get_omega(D, sigma, a_prev)
+    Q_sqrt = act.get_loss_matrix_greedy(N, rho, D, 0, 0) if greedy else act.get_loss_matrix(N, rho, D, sigma, omega)
 
-    m_dd, var_r, avg_r = eval.risk_metrics(rewards)
-    m_dd_agg, var_r_agg, avg_r_agg = eval.risk_metrics(rewards_agg)
-    m_dd_even, var_r_even, avg_r_even = eval.risk_metrics(rewards_even)
-    print("max draw-down (risk-seeking): ", m_dd_agg)
-    print("variance in portfolio returns (risk-seeking): ", var_r_agg)
-    print("average reward (risk-seeking): ", avg_r_agg)
-    print("---------------------------")
-    print("max draw-down (uniform): ", m_dd_even)
-    print("variance in portfolio returns (uniform): ", var_r_even)
-    print("average reward (uniform): ", avg_r_even)
-    print("---------------------------")
-    eval.compare_rewards([rewards, rewards_agg, rewards_even], ["risk-averse", "risk-seeking", "uniform"])
-    eval.plot_omega(omega_arr)
-    eval.plot_forgetting_params(forget_params)
-    eval.average_allocation_chart(np.array(actions), tckrs, 10)
-    eval.average_allocation_chart(np.array(actions_agg), tckrs, 10)
+    A_new = act.update_evolution_matrix(N, rho, P, X, A)
+    s_t = np.hstack((a_prev, np.zeros(N), y_hat, x_t))
 
-    plt.plot(sr[10:], label="risk-averse")
-    plt.plot(sr_a[10:], label="risk-seeking")
-    plt.plot(sr_u[10:], label="uniform")
-    plt.xlabel("time")
-    plt.ylabel("Sharpe Ratio")
-    plt.legend()
-    plt.show()
+    a_opt, H_new = act.action_generation(N, rho, s_t, B, Q_sqrt, A_new, h, H_prev, P, Gxx_mix, np.linalg.inv(sigma),
+                                         sampling=thompson)
 
-    return m_dd, var_r, avg_r, sign_accuracy
+    return a_opt, H_new, A_new, omega
+
+
+def step_update(models, y_t, x_t, y_hat_mix, y_hats, Gxx_mix, G_0, priors, time_step):
+    """Updates the state matrices and parameters for all models."""
+    alpha_0, beta_0, gamma_0, delta_0 = priors
+    N, rho = len(y_t), len(x_t)
+    d = np.concatenate((y_t, x_t))
+
+    # Calculate base optimal forgetting using the first model
+    args = build_forget_args(alpha_0, beta_0, gamma_0, delta_0, time_step, models[0]['G'], G_0, y_t, y_hats[0], x_t,
+                             Gxx_mix)
+    alpha, beta, gamma = func.opt_forget_factors(args)
+
+    # Calculate stress signal (eta)
+    G1yy, G1xx = models[0]['G'][:N, :N], models[0]['G'][N:, N:]
+    eta = func.compute_eta(G1yy, G1xx, y_t, y_hat_mix, x_t, models[0]['delta'], rho)
+    beta2 = 0.95*eta
+
+    # Update models dynamically based on their type
+    for mod in models:
+        if mod['type'] == 'optimal':
+            mod['G'] = func.update_G(mod['G'], d, G_0, alpha, beta)
+            mod['delta'] = (alpha + beta) * mod['delta'] + beta + gamma * delta_0
+        elif mod['type'] == 'stress':
+            mod['G'] = func.update_G(mod['G'], d, G_0, 0.96 - beta2, beta2)
+            # mod['delta'] keeps its internal logic or static decay depending on spec
+
+    return models, (alpha, beta, gamma), beta2
+
+
+def run_simulation(t_0, terminal_time, y, X_full, V_prior, G_prior, delta_0, priors, N, rho, opt_steps, thompson, iit, is_toy=True):
+    """Main simulation loop handling state transitions over time."""
+    phi_0 = priors['phi_0']
+    D = 0.002 * np.eye(N)
+
+    # Initialize multi-model setup
+    models = [
+        {'type': 'optimal', 'G': G_prior.copy(), 'delta': delta_0},
+        {'type': 'stress', 'G': G_prior.copy(), 'delta': delta_0}
+    ]
+
+    A, B, X_mat = act.initialize_evolution_matrices(N, rho)
+    H, H_greedy = 1e-5 * np.eye(3 * N + rho), 1e-5 * np.eye(3 * N + rho)
+    a_prev, a_prev_greedy, a_even = np.ones(N) / N, np.ones(N) / N, np.ones(N) / N
+
+    metrics = {
+        'rewards': [1], 'rewards_greedy': [1], 'rewards_even': [1],
+        'actions': [a_prev], 'actions_greedy': [a_prev_greedy],
+        'residuals': [], 'predictions': [], 'omega': [], 'forget_params': [], 'etas': [], 'phi': [], 'mix': []
+    }
+
+    for t in range(t_0, terminal_time):
+        if t % 100 == 0: print(f'Step: t={t}')
+
+        # 1) Construct regressor dynamically (No Look-Ahead)
+        x_t = get_current_regressor(X_full, p=1, step=t, max_lookback=40, is_toy=is_toy, X_toy=X_full)
+
+        # 2) Predict & Mix
+        y_hat_mix, P_mix, sigma, Gxx_mix, y_hats, weights = step_predict(models, x_t, N)
+        metrics['residuals'].append(y[t] - y_hat_mix)
+        metrics['predictions'].append(y_hat_mix)
+        metrics['mix'].append(weights)
+
+        # 3) Allocate
+        a_opt, H_new, A, omega = step_allocate(N, rho, y_hat_mix, x_t, sigma, P_mix, Gxx_mix, a_prev, A, B, X_mat, H, D,
+                                               opt_steps, thompson, greedy=False)
+        a_greedy, H_new_greedy, _, _ = step_allocate(N, rho, y_hat_mix, x_t, sigma, P_mix, Gxx_mix, a_prev_greedy, A, B,
+                                                     X_mat, H_greedy, D, opt_steps, thompson, greedy=True)
+
+        # 4) Compute Rewards
+        tr_c = sum(D[i][i] * np.abs(a_prev[i] - a_opt[i]) for i in range(N))
+        tr_c_greedy = sum(D[i][i] * np.abs(a_prev_greedy[i] - a_greedy[i]) for i in range(N))
+
+        metrics['rewards'].append(metrics['rewards'][-1] * (1 + a_opt @ y[t]) * (1 - tr_c))
+        metrics['rewards_greedy'].append(metrics['rewards_greedy'][-1] * (1 + a_greedy @ y[t]) * (1 - tr_c_greedy))
+        metrics['rewards_even'].append(metrics['rewards_even'][-1] * (1 + a_even @ y[t]))
+
+        a_prev, a_prev_greedy = a_opt, a_greedy
+        metrics['actions'].append(a_opt)
+        metrics['actions_greedy'].append(a_greedy)
+        metrics['omega'].append(omega)
+
+        # 5) Update Parameters
+        prior_tuple = (priors['alpha_0'], priors['beta_0'], priors['gamma_0'], delta_0)
+        models, f_params, eta = step_update(models, y[t], x_t, y_hat_mix, y_hats, Gxx_mix, G_prior, prior_tuple, t)
+
+        if iit:
+            H, phi_opt = func.optimize_H(phi_0, H, H_new)
+            H_greedy, _ = func.optimize_H(phi_0, H_greedy, H_new_greedy)
+            metrics['phi'].append(phi_opt)
+
+        metrics['forget_params'].append(f_params)
+        metrics['etas'].append(eta)
+    print(P_mix)
+    return metrics
 
 
 if __name__ == "__main__":
-    # 0) Select optional parameters
-    t_bar = 10  # time taken to collect V_bar
-    # T = 250 # time taken to collect more data for structure estimation
-
-    ##  ==== params in prior ====
-    mu = 0.9 # [0.6, 0.9] # set higher for sampling
-    ##  forgetting params
-    alpha0 = 0.09 # [0.02, 0.3]
-    beta0 = 0.5 # [0.2, 0.9]
-    gamma0 = 1 - alpha0 - beta0 # [0.01, 0.4]
-    phi0 = 0.1
-
-    # ==== GA params ====
-    batch = 16 # number of mutations in each iteration of the population
-    p_m = 0.25 # mutation probability
-    m_iter = 1*1e2 # maximum number of iterations of the GA
-    decay = 0.99 # decay rate for p_m
-
-    # 1) Collect arrays y and x
-    tickers = ["1", "2", "3"]
-    # tickers = ["AIT", "AAPL"] # test1 lag = 4
-    # tickers = ["SPX", "NDX", "GLD"] # test2 lag = 4
-    # tickers = ["AAON", "AIT", "MSTR", "SMCI", "FIX"] # test3 lag = 3
-    # tickers = ["AAPL", "AMZN", "GOOGL", "META", "MSFT"] # test4 lag = 4
-    # tickers_full = ['MRNA', 'KR', 'TDG', 'SW', 'NEM', 'MOH', 'SMCI', 'CLX', 'EQT', 'FSLR', 'CBOE', 'K', 'NFLX', 'DLTR', 'WST', 'OXY', 'DPZ', 'SJM', 'GEN', 'LLY']
-    # tickers = ["SPX", "NDX"]
-    # all_tickers = ['MRNA', 'COP', 'MOH', 'AXON', 'WST', 'EQT', 'AZO', 'DXCM', 'DELL', 'EXR', 'ENPH', 'BG', 'CRWD',
-    #               'EPAM', 'OXY',
-    #               'TGT', 'TSLA', 'CF', 'ANET', 'TSCO']
-
-    # tickers = ['MRNA', 'TGT', 'CF', 'AXON', 'EXR', 'CRWD', 'DXCM', 'TSLA', 'ANET', 'OXY']
-    # ret_full = gather_data(tickers)
-
-    # ret = ret_full[len(ret_full) - 500 - T:]
-    # The regressor at time t: X[t] has to be constructed such it predicts y[t]
-    # We construct it before the simulation run to keep everything tidy and easy to check
-    # p = 4
-    # X = indicators.build_reduced_regressor(ret, p) # after structure estimation
-    # X = indicators.build_regressor(ret, vol, p) # before structure estimation
-
-    ## set y = ret[p+1:], where p is the lag in AR(p), then X[t] is regressor for y[t], P@X[t] = y_hat for y[t]
-    # y = ret[p+1:]
-
-    # N = y.shape[1]
-    # rho = X.shape[1]
-
-    ## TOY EXAMPLE
     np.random.seed(0)
-    rho = 5  # number of predictors
-    N = 3  # number of response dimensions
-    T = 250  # sample size
 
-    # Beta becomes a matrix (rho x N)
-    beta_true = np.random.randn(rho, N)
+    sim_setup = {
+        'T_bar': 10, 'T': 250,
+        'N': 3, 'rho': 5,
+        'mu': 0.9,
+        'h_steps': 1, 'Thompson': False, 'iter_in_time': True,
+    }
 
-    # X stays the same: (T x rho)
-    X = np.random.randn(T, rho) * 1/100
+    priors = {
+        'alpha_0': 0.09, 'beta_0': 0.5, 'phi_0': 0.1,
+        'gamma_0': 1 - 0.09 - 0.5
+    }
 
-    noise_scale = np.linspace(0.001, 0.005, T).reshape(-1, 1)  # shape (T, 1)
-    noise = noise_scale * np.random.randn(T, N)  # shape (T, N)
+    # tickers = ['MRNA', 'KR', 'TDG', 'SW']
+    # y_full = gather_data(tickers)
 
-    # Multivariate response
-    y = X @ beta_true + noise
+    # Toy Example Data Generation
+    beta_true = np.random.randn(sim_setup['rho'], sim_setup['N'])
+    X = np.random.randn(sim_setup['T'], sim_setup['rho']) * 1 / 100
+    noise = np.linspace(0.001, 0.005, sim_setup['T']).reshape(-1, 1) * np.random.randn(sim_setup['T'], sim_setup['N'])
 
-    # 2) Collect \bar{V} and construct (V_0, delta_0), select priors alpha_0, beta_0, gamma_0
+    y = X @ beta_true + noise + clustered_volatility(sim_setup['T'], sim_setup['N'], seed=0)
 
-    V0, G0, delta0 = func.opt_prior(y, X, t_bar, N, rho, mu)
+    # Bootstrapping prior
+    V0, G0, delta0 = func.opt_prior(y, X, sim_setup['T_bar'], sim_setup['N'], sim_setup['rho'], sim_setup['mu'])
 
-    #
-    # Vyy0 = V0[:N, :N]
-    # Vyx0 = V0[:N, N:] # in text: Vyx = Vxy.T
-    # Vxx0 = V0[N:, N:]
-    #
-    # # # 3) Gather more data and run structure estimation
-    # #
-    # V = V0.copy()
-    # for t in range(t_bar, T):
-    #     d = np.concatenate((y[t], X[t]))
-    #     V += np.outer(d, d)
-    # Vyy = V[:N, :N]
-    # Vyx = V[:N, N:]
-    # Vxx = V[N:, N:]
-    # Lambda = Vyy - Vyx @ np.linalg.inv(Vxx) @ Vyx.T
-    # r, l_max = func.genetic_algorithm(Vyy, Vyy0, Vyx, Vyx0, Vxx, Vxx0, T-t_bar, delta0, mu, batch, p_m, m_iter, decay)
-    # print(f"best parent:{r}, with likelihood:{l_max}")
+    # Run modular simulation
+    metrics = run_simulation(sim_setup['T_bar'], sim_setup['T'], y, X, V0, G0, delta0, priors, sim_setup['N'], sim_setup['rho'],
+                             sim_setup['h_steps'], sim_setup['Thompson'], sim_setup['iter_in_time'], is_toy=True)
 
-    # 4) Run the model
-
-    T_terminal = len(y)
-    max_dd, variance_r, average_r, sign_acc = model_run(t_bar, T_terminal, y, X, V0, G0, delta0, alpha0, beta0, gamma0, phi0, N, rho, tickers)
-
-    # 5) Evaluate
-
-    print("max draw-down: ", max_dd)
-    print("variance in portfolio returns: ", variance_r)
-    print("average reward: ", average_r)
-    print("sign accuracy: ", sign_acc/(T_terminal - T))
-    print("---------------------------")
-
-    # for i in range(len(tickers)):
-    #     eval.plot_perf(y[:, i], tickers[i])
-
+    # Delegate all evaluation and charting to eval.py
+    eval.evaluate_simulation_results(metrics, [str(i) for i in range(sim_setup['N'])])
     print("FINISHED")
+    print(beta_true)
+    plt.plot(y, label='response')
+    plt.title("Toy Example")
+    plt.ylabel("value")
+    plt.xlabel("time")
+    plt.legend()
+    plt.show()

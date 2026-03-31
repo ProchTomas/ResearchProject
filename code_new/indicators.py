@@ -1,195 +1,89 @@
 import numpy as np
-import math
 
-def sma(data):
-    """Simple Moving Average
-    :arg
-        data: array of the data, len(data) = period of the SMA
-    :returns
-        array of simple moving averages
+
+def ema_step(data, period):
+    """Calculates the final EMA value for the given data window."""
+    alpha = 2.0 / (period + 1.0)
+    ema_val = data[0]
+    for t in range(1, len(data)):
+        ema_val = alpha * data[t] + (1.0 - alpha) * ema_val
+    return ema_val
+
+
+def rsi_step(data, period=14):
+    """Calculates the custom RSI for the end of the window."""
+    if len(data) < period + 1:
+        return np.zeros(data.shape[1])
+
+    diff = np.diff(data[-period - 1:], axis=0)
+    gains = np.maximum(diff, 0).mean(axis=0)
+    losses = np.maximum(-diff, 0).mean(axis=0)
+
+    # Avoid division by zero
+    rs = np.divide(gains, losses, out=np.zeros_like(gains), where=losses != 0)
+    rsi_val = 100.0 - (100.0 / (1.0 + rs))
+
+    # Custom transformation from your original code
+    rsi_val = 1 / (1 + np.exp(0.4 * (rsi_val - 30))) + 1 / (1 + np.exp(0.4 * (rsi_val - 70))) - 1
+    return rsi_val
+
+
+def rolling_variance(data):
+    """Returns the variance of the provided window."""
+    if len(data) < 2: return np.zeros(data.shape[1])
+    return np.var(data, axis=0, ddof=1)
+
+
+def rolling_drawdown(data):
+    """Calculates the max drawdown observed in the provided window."""
+    if len(data) == 0: return np.zeros(data.shape[1])
+    cum_returns = np.cumprod(1 + data, axis=0)
+    running_max = np.maximum.accumulate(cum_returns)
+    drawdowns = (cum_returns - running_max) / np.maximum(running_max, 1e-8)
+    return np.min(drawdowns, axis=0)
+
+
+def build_step_regressor(window, p, step):
     """
-    ma = 0
-    period = len(data)
-    for i in range(period):
-        ma += data[i]
-    return ma / period
-    
-    
-def rsi(data):
-    """Relative Strength Index
-    :arg
-        data: array of the data from which to calculate RSI, len(data) = period for the RSI
-    :returns
-        array of the custom RSI values (values in range [0, 1])
+    Builds the regressor x_t using strictly historical data up to t-1.
+    :arg window: historical returns, shape (W, N)
+    :arg p: AR lag
+    :arg step: current time step t
     """
-    period_rsi = len(data)
-    num_vars = len(data[0])
-    rsi_values = []
-    rsi_val = 0
-    
-    for j in range(num_vars):
-        avg_gain = 0
-        avg_loss = 0
-        num_g = 0
-        num_l = 0
-        
-        for i in range(period_rsi):
-            if data[i][j] >= 0:
-                avg_gain += data[i][j]
-                num_g += 1
-            else:
-                avg_loss += abs(data[i][j])
-                num_l += 1
-        if avg_loss == 0:
-            rsi_values.append(1)
-        elif avg_gain == 0:
-            rsi_values.append(0)
-        else:
-            # classic RSI
-            rsi_val = 100 - 100 / (1 + (avg_gain/num_g) / (avg_loss/num_l))
-            # custom transformation: exaggerate values in (0, 30) u (70, 100) and project to (0, 1)
-            rsi_val = 1 / (1 + np.exp(0.4 * (rsi_val - 30))) + 1 / (1 + np.exp(0.4 * (rsi_val - 70))) - 1
-            rsi_values.append(rsi_val)
-        
-    return np.array(rsi_values)
+    W, N = window.shape
 
+    # 1. Autoregressive Lags
+    lags = window[-p:].flatten() if W >= p else np.zeros(p * N)
 
-def mae(data_point, ma_exponential, period):
-    """Moving Average Exponential
-    :arg
-        data_point: current data point
-        ma_exponential: previous mae value
-        period: the period for moving average
-    :returns
-        array of exponential moving averages
-    """
-    alpha = 2 / (period + 1)
-    return alpha * data_point + (1 - alpha) * ma_exponential # returns moving average exponential
-    
+    # 2. Moving Averages / MACD
+    if W >= 10:
+        macd = ema_step(window, 10) - ema_step(window, 5)
+    else:
+        macd = np.zeros(N)
 
-def stoch_osc(data):
-    """Stochastic Oscillator
-    :arg
-        data: array of the data from which to calculate Stochastic Oscillator, len(data) = period
-        custom stochastic oscillator
-    """
-    num_vars = len(data[0])
-    period = len(data)
-    low = [0] * num_vars
-    high = [0] * num_vars
-    
-    osc_values = []
-    for j in range(num_vars):
-        for i in range(period):
-            if data[i][j] > high[j]:
-                high[j] = data[i][j]
-                
-            if data[i][j] < low[j]:
-                low[j] = data[i][j]
-        osc_values.append((abs(data[-1][j] - low[j])) / (abs(high[j] - low[j])))
-        
-    return osc_values # returns value from range [0, 1]
+    # 3. Rolling Metrics (Example: 10-period window)
+    if W >= 10:
+        roll_var = rolling_variance(window[-10:])
+        roll_dd = rolling_drawdown(window[-10:])
+    else:
+        roll_var, roll_dd = np.zeros(N), np.zeros(N)
 
+    # 4. Oscillators
+    rsi_val = rsi_step(window, period=14)
 
-def vol_osc(volume_period1, volume_period2):
-    """Volume Oscillator
-    :arg
-        volume_period1: log-volume data with the period of short term simple moving average
-        volume_period2: log_volume data with the period of long term simple moving average
-    :returns
-        volume oscillator
-    """
-    short_sma = sma(volume_period1)
-    long_sma = sma(volume_period2)
-    if np.any(short_sma == 0):
-        return short_sma
-    return (short_sma - long_sma) / short_sma # returns value from range [0, 1]
+    # 5. Time features
+    sin30 = np.sin(2 * np.pi * step / 30)
 
+    # --- EASY TOGGLE BOARD ---
+    # Comment or uncomment features below to add them to your regressor.
+    features = [
+        lags,
+        # macd,
+        # roll_var,
+        # roll_dd,
+        # rsi_val,
+        # [sin30],
+        # [1.0]  # Intercept
+    ]
 
-def build_regressor(r, p):
-    """Function to construct array that contains regressors
-    Contains: previous y_t, log-volume, short term SMA of volume and previous y_t,
-    inflation data, VIX, sin with different frequencies, volume oscillator, stochastic oscillator,
-    MACD, and modified RSI
-    :arg
-        r: array of previous returns
-        v: array of log-volume data
-        p: AR lag
-    :returns
-        array of regressors X
-    """
-    rsi_values = []
-    lag_values = []
-    mae_short = np.zeros(len(r[0]))
-    mae_short2 = np.zeros(len(r[0]))
-    mae_short3 = np.zeros(len(r[0]))
-    short_period = 5
-    long_period = 10
-    short_period2 = 5
-    short_period3 = 1
-    long_period2 = 20
-    long_period3 = 30
-    mae_long = np.zeros(len(r[0]))
-    mae_long2 = np.zeros(len(r[0]))
-    mae_long3 = np.zeros(len(r[0]))
-    macd_values = []
-    macd_values_short = []
-    macd_values_long = []
-    stoch_osc_values = []
-    # vol_osc_values = []
-    # lag_volumes = []
-    for j in range(p+1, len(r)):
-        mae_short = mae(r[j-1], mae_short, short_period)
-        mae_long = mae(r[j-1], mae_long, long_period)
-        macd_values.append(mae_long - mae_short)
-
-        mae_short2 = mae(r[j - 1], mae_short2, short_period2)
-        mae_long2 = mae(r[j - 1], mae_long2, long_period2)
-        macd_values_short.append(mae_long2 - mae_short2)
-
-        mae_short3 = mae(r[j - 1], mae_short3, short_period3)
-        mae_long3 = mae(r[j - 1], mae_long3, long_period3)
-        macd_values_long.append(mae_long3 - mae_short3)
-        # stoch_osc_values.append(stoch_osc(r[j-p:j]))
-        # vol_osc_values.append(vol_osc(v[j-p:j], v[j-1]))
-        # rsi_values.append(rsi(r[j-p:j])) # RSI from and including r[j-1] (p+1 observations)
-        lag_values.append(np.array(r[j-p:j]).flatten()) # arrays of lagged values up to and including r[j-1]
-        # lag_volumes.append(np.array(v[j-p:j]).flatten())
-    n = len(lag_values)
-    sin10 = np.sin(2 * np.pi * np.arange(n) / 10).reshape(-1, 1)
-    sin30 = np.sin(2 * np.pi * np.arange(n) / 30).reshape(-1, 1)
-    sin90 = np.sin(2 * np.pi * np.arange(n) / 90).reshape(-1, 1)
-    x = np.hstack([lag_values, macd_values, macd_values_short, macd_values_long, sin10, sin30, sin90, np.ones((np.asarray(lag_values).shape[0], 1))])
-    return x
-
-def build_reduced_regressor(r, p):
-    """To make the work-flow simple. Call indicators.build_regressor() to obtain the full regressors array.
-    Then run structure estimation, simply comment out the insignificant regressors and adjust the autoregression
-    depth for returns and volumes
-    :arg
-        r: array of previous returns
-        v: array of log-volume data
-        p: AR lag
-    :returns
-        array of (reduced) regressors X
-    """
-    # rsi_values = []
-    lag_values = []
-    mae_short = np.zeros(len(r[0]))
-    short_period = 5
-    long_period = 10
-    mae_long = np.zeros(len(r[0]))
-    macd_values = []
-    # stoch_osc_values = []
-    for j in range(p+1, len(r)):
-        mae_short = mae(r[j-1], mae_short, short_period)
-        mae_long = mae(r[j-1], mae_long, long_period)
-        macd_values.append(mae_long - mae_short)
-        # stoch_osc_values.append(stoch_osc(r[j - p:j]))
-        # rsi_values.append(rsi(r[j - p:j]))  # RSI from and including r[j-1] (p+1 observations)
-        lag_values.append(np.array(r[j - p:j]).flatten())  # arrays of lagged values up to and including r[j-1]
-
-    n = len(lag_values)
-    sin30 = np.sin(2 * np.pi * np.arange(n) / 30).reshape(-1, 1)
-    x = np.hstack([lag_values, macd_values, np.ones((np.asarray(lag_values).shape[0], 1))])
-    return x
+    return np.concatenate(features)

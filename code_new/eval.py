@@ -228,3 +228,49 @@ def plot_simulation_wealth_paths(r_arr):
     plt.ylabel("value")
     plt.legend(frameon=False)
     plt.show()
+
+
+def evaluate_simulation_results(metrics, tickers):
+    """
+    Centralized function to print stats and plot graphs for the simulation output.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    m_dd, var_r, avg_r = risk_metrics(metrics['rewards'])
+    m_dd_agg, var_r_agg, avg_r_agg = risk_metrics(metrics['rewards_greedy'])
+    m_dd_even, var_r_even, avg_r_even = risk_metrics(metrics['rewards_even'])
+
+    print('=== MODELS STATS ===')
+    print(f"Risk-Averse  -> Max DD: {m_dd:.4f} | Var: {var_r:.6f} | Avg Return: {avg_r:.6f}")
+    print(f"Risk-Seeking -> Max DD: {m_dd_agg:.4f} | Var: {var_r_agg:.6f} | Avg Return: {avg_r_agg:.6f}")
+    print(f"Uniform      -> Max DD: {m_dd_even:.4f} | Var: {var_r_even:.6f} | Avg Return: {avg_r_even:.6f}")
+    print("---------------------------")
+
+    compare_rewards(
+        [metrics['rewards'], metrics['rewards_greedy'], metrics['rewards_even']],
+        ["risk-averse", "risk-seeking", "uniform"]
+    )
+
+    plot_omega(metrics['omega'])
+    plot_forgetting_params(metrics['forget_params'])
+    average_allocation_chart(np.array(metrics['actions']), tickers, 1)
+
+    # Miscellaneous plots from main
+    plt.figure()
+    plt.plot(metrics['phi'], label="phi")
+    plt.xlabel("time")
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    plt.plot(metrics['etas'], label="eta")
+    plt.xlabel("time")
+    plt.legend()
+    plt.show()
+
+    plt.figure()
+    plt.plot(metrics['mix'], label='mixing weights')
+    plt.xlabel("time")
+    plt.legend()
+    plt.show()
