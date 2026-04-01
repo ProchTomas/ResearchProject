@@ -117,7 +117,7 @@ def step_predict(models, x_t, N):
 
         P = Gyx @ np.linalg.inv(Gxx)
         y_hat = P @ x_t
-        v_hat = Gyy @ Gyy / (delta - 2) * (1 + x_t.T @ np.linalg.inv(Gxx @ Gxx.T) @ x_t)
+        v_hat = det(Gyy @ Gyy / (delta - 2) * (1 + x_t.T @ np.linalg.inv(Gxx @ Gxx.T) @ x_t))
 
         y_hats.append(y_hat)
         v_hats.append(v_hat)
