@@ -1,0 +1,17 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+strategy & total return & ann. return & ann. vol. & Sharpe (ann.) & max DD & Calmar & turnover/day & cost paid \\
+\hline
+Risk-Averse (RA) & 1.373 & 17.0\% & 24.3\% & 0.77 & -28.2\% & 0.68 & 10.7\% & 10.7\% \\
+RA, legacy softmax solver & 1.547 & 24.4\% & 26.5\% & 0.96 & -23.0\% & 1.12 & 2.9\% & 2.9\% \\
+Risk-Neutral loss & 0.405 & -40.3\% & 55.9\% & -0.76 & -75.6\% & -0.51 & 141.6\% & 141.6\% \\
+RA, no forgetting & 1.311 & 14.3\% & 23.1\% & 0.70 & -28.3\% & 0.57 & 12.0\% & 12.0\% \\
+\hline
+\end{tabular}
+\caption{Ablation study: each row removes or replaces one component of the Risk-Averse policy (mean over 100 portfolios).}
+\label{tab:ablation_bear2022}
+\end{table*}

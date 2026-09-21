@@ -1,0 +1,24 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+benchmark & $\Delta$Sharpe & 95\% CI & $p$ & win rate & $\Delta$max DD & $p$ & $\Delta$total ret. & $p$ \\
+\hline
+Risk-Averse (RA) & +0.51 & [+0.45, +0.57] & $<$0.001 & 95\% & -2.0\% & $<$0.001 & +0.351 & $<$0.001 \\
+Equal-weight, rebalanced & -0.02 & [-0.02, -0.01] & $<$0.001 & 4\% & -0.1\% & $<$0.001 & -0.011 & $<$0.001 \\
+Equal-weight, buy \& hold & +0.03 & [+0.00, +0.06] & 0.032 & 56\% & +1.0\% & $<$0.001 & -0.000 & 0.962 \\
+Inverse volatility (60d) & +0.13 & [+0.11, +0.15] & $<$0.001 & 87\% & -0.7\% & $<$0.001 & +0.160 & $<$0.001 \\
+Min-variance (120d) & +0.45 & [+0.41, +0.49] & $<$0.001 & 98\% & -3.0\% & $<$0.001 & +0.342 & $<$0.001 \\
+Min-variance (250d) & +0.37 & [+0.32, +0.42] & $<$0.001 & 92\% & -4.2\% & $<$0.001 & +0.310 & $<$0.001 \\
+Mean-variance (120d) & +0.68 & [+0.61, +0.75] & $<$0.001 & 99\% & +20.3\% & $<$0.001 & +0.353 & $<$0.001 \\
+Mean-variance (250d) & +0.21 & [+0.14, +0.28] & $<$0.001 & 71\% & +9.9\% & $<$0.001 & -0.299 & $<$0.001 \\
+Mean-variance, cost-aware (120d) & +0.54 & [+0.48, +0.61] & $<$0.001 & 92\% & +12.5\% & $<$0.001 & +0.198 & $<$0.001 \\
+ARX-conditional mean-variance & +1.14 & [+1.05, +1.23] & $<$0.001 & 100\% & +5.3\% & $<$0.001 & +0.605 & $<$0.001 \\
+S\&P 500 (SPY) buy \& hold & -0.12 & [-0.18, -0.05] & 0.002 & 39\% & -6.5\% & $<$0.001 & +0.128 & $<$0.001 \\
+\hline
+\end{tabular}
+\caption{Paired comparison of the legacy (softmax) policy against every benchmark.}
+\label{tab:bench_paired_softmax_oos2026}
+\end{table*}

@@ -1,0 +1,26 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+strategy & total return & ann. return & ann. vol. & Sharpe (ann.) & max DD & Calmar & turnover/day & cost paid \\
+\hline
+Risk-Averse (RA) & 1.126 & 5.6\% & 19.4\% & 0.37 & -25.5\% & 0.36 & 14.8\% & 14.8\% \\
+RA, $\mu=0.5$ & 1.150 & 7.0\% & 18.4\% & 0.45 & -22.0\% & 0.42 & 16.9\% & 16.9\% \\
+RA, $\mu=0.7$ & 1.190 & 8.8\% & 18.4\% & 0.55 & -21.5\% & 0.53 & 10.9\% & 10.9\% \\
+RA, $\mu=0.95$ & 1.096 & 4.2\% & 19.7\% & 0.30 & -26.5\% & 0.25 & 18.4\% & 18.4\% \\
+RA, $(\alpha_0,\beta_0)=(0.2,0.2)$ & 1.127 & 5.6\% & 19.4\% & 0.37 & -25.5\% & 0.36 & 14.8\% & 14.8\% \\
+RA, $(\alpha_0,\beta_0)=(0.3,0.6)$ & 1.122 & 5.5\% & 19.0\% & 0.37 & -24.8\% & 0.37 & 14.9\% & 14.9\% \\
+RA, $(\alpha_0,\beta_0)=(0.5,0.45)$ & 1.119 & 5.4\% & 18.8\% & 0.37 & -24.5\% & 0.35 & 15.2\% & 15.2\% \\
+RA, $\omega_{\max}=1$ & 1.305 & 14.0\% & 21.0\% & 0.72 & -26.3\% & 0.57 & 1.6\% & 1.6\% \\
+RA, $\omega_{\max}=10$ & 0.266 & -50.5\% & 38.7\% & -1.72 & -79.1\% & -0.63 & 159.7\% & 159.7\% \\
+RA, $\omega_{\max}=100$ & 0.541 & -27.5\% & 23.3\% & -1.31 & -55.4\% & -0.48 & 92.4\% & 92.4\% \\
+RA, $\omega$: unit KLD & 0.353 & -41.8\% & 29.5\% & -1.76 & -70.3\% & -0.58 & 132.2\% & 132.2\% \\
+RA, $\omega$: match prediction & 0.367 & -40.4\% & 27.4\% & -1.82 & -68.6\% & -0.58 & 127.8\% & 127.8\% \\
+RA, $\omega=40$ & 0.358 & -41.3\% & 28.4\% & -1.80 & -69.7\% & -0.58 & 131.5\% & 131.5\% \\
+\hline
+\end{tabular}
+\caption{Sensitivity to the user-set hyperparameters (prior shrinkage $\mu$, prior forgetting weights) (mean over 100 portfolios).}
+\label{tab:sensitivity}
+\end{table*}

@@ -1,0 +1,23 @@
+\begin{table*}[ht!]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\hline
+variant & regressors selected & setup [s] & time / step [s] & fallbacks \\
+\hline
+Risk-Averse (RA) & 57 / 137 & 2.6 & 0.10 & 0 \\
+RA, legacy softmax solver & 57 / 137 & 2.6 & 0.09 & 0 \\
+RA, SMALBE solver & 57 / 136 & 2.5 & 0.24 & 0 \\
+Risk-Neutral loss & 57 / 136 & 2.6 & 0.09 & 0 \\
+RA, no forgetting & 57 / 136 & 2.6 & 0.08 & 0 \\
+RA, exp. forgetting 0.99 & 57 / 136 & 2.6 & 0.08 & 0 \\
+RA, no structure est. & 136 / 136 & 0.0 & 0.37 & 0 \\
+RA, flat prior & 131 / 136 & 6.7 & 0.23 & 0 \\
+RA, horizon 5 & 57 / 136 & 2.8 & 0.04 & 0 \\
+RA, Thompson sampling & 57 / 136 & 2.8 & 0.10 & 0 \\
+\hline
+\end{tabular}
+\caption{Computational cost per portfolio (means): regressors kept by the structure estimation out of the full set, prior + structure estimation time, and wall time per trading day of the online loop (single core).}
+\label{tab:runtime}
+\end{table*}

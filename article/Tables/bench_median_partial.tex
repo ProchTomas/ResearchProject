@@ -1,0 +1,23 @@
+\begin{table*}[ht!]
+\centering
+\small
+\begin{tabular}{lrrrrrrrr}
+\hline
+strategy & total return & ann. return & ann. vol. & Sharpe (ann.) & max DD & Calmar & turnover/day & cost paid \\
+\hline
+Risk-Averse (RA) & 1.125 & 6.1% & 19.4% & 0.39 & -27.5% & 0.19 & 15.6% & 15.6% \\
+Equal-weight, rebalanced & 1.252 & 12.0% & 20.7% & 0.64 & -25.4% & 0.47 & 1.6% & 1.6% \\
+Equal-weight, buy \& hold & 1.338 & 15.8% & 22.1% & 0.80 & -27.2% & 0.59 & 0.0% & 0.0% \\
+Inverse volatility (60d) & 1.182 & 8.8% & 19.0% & 0.52 & -25.8% & 0.34 & 2.2% & 2.2% \\
+Min-variance (120d) & 1.122 & 6.0% & 17.4% & 0.42 & -23.5% & 0.27 & 2.8% & 2.8% \\
+Min-variance (250d) & 1.156 & 7.6% & 17.2% & 0.52 & -22.6% & 0.34 & 2.0% & 2.0% \\
+Mean-variance (120d) & 1.272 & 12.9% & 37.5% & 0.50 & -40.1% & 0.34 & 15.7% & 15.7% \\
+Mean-variance (250d) & 1.537 & 24.2% & 37.4% & 0.76 & -38.5% & 0.68 & 8.5% & 8.5% \\
+Mean-variance, cost-aware (120d) & 1.325 & 15.2% & 36.9% & 0.57 & -41.1% & 0.35 & 1.1% & 1.1% \\
+ARX-conditional mean-variance & 0.184 & -57.4% & 47.6% & -1.52 & -84.9% & -0.68 & 173.5% & 173.5% \\
+S\&P 500 (SPY) buy \& hold & 1.624 & 27.7% & 16.3% & 1.58 & -18.8% & 1.48 & -- & -- \\
+\hline
+\end{tabular}
+\caption{Benchmark comparison, medians (median over 55 portfolios).}
+\label{tab:bench_median_partial}
+\end{table*}

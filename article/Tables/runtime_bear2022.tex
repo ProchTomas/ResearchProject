@@ -1,0 +1,17 @@
+\begin{table*}[ht!]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\hline
+variant & regressors selected & setup [s] & time / step [s] & fallbacks \\
+\hline
+Risk-Averse (RA) & 72 / 136 & 3.4 & 0.13 & 0 \\
+RA, legacy softmax solver & 72 / 136 & 3.4 & 0.13 & 0 \\
+Risk-Neutral loss & 72 / 136 & 3.3 & 0.12 & 0 \\
+RA, no forgetting & 72 / 136 & 3.4 & 0.10 & 0 \\
+\hline
+\end{tabular}
+\caption{Computational cost per portfolio (means): regressors kept by the structure estimation out of the full set, prior + structure estimation time, and wall time per trading day of the online loop (single core).}
+\label{tab:runtime_bear2022}
+\end{table*}

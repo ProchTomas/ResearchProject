@@ -1,0 +1,25 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+strategy & total return & ann. return & ann. vol. & Sharpe (ann.) & max DD & Calmar & turnover/day & cost paid \\
+\hline
+Risk-Averse (RA) & 1.201 & 9.7\% & 20.2\% & 0.58 & -22.5\% & 0.44 & 14.1\% & 14.1\% \\
+RA, legacy softmax solver & 1.541 & 24.3\% & 22.5\% & 1.07 & -25.0\% & 0.94 & 2.8\% & 2.8\% \\
+Equal-weight, rebalanced & 1.549 & 24.7\% & 22.5\% & 1.09 & -24.9\% & 0.96 & 1.8\% & 1.8\% \\
+Equal-weight, buy \& hold & 1.570 & 25.5\% & 23.6\% & 1.08 & -25.9\% & 0.97 & 0.0\% & 0.0\% \\
+Inverse volatility (60d) & 1.382 & 17.7\% & 19.4\% & 0.94 & -24.2\% & 0.75 & 2.3\% & 2.3\% \\
+Min-variance (120d) & 1.203 & 9.7\% & 18.2\% & 0.59 & -22.6\% & 0.45 & 2.8\% & 2.8\% \\
+Min-variance (250d) & 1.234 & 11.2\% & 17.8\% & 0.70 & -21.0\% & 0.55 & 2.1\% & 2.1\% \\
+Mean-variance (120d) & 1.197 & 9.5\% & 41.8\% & 0.42 & -45.7\% & 0.20 & 15.5\% & 15.5\% \\
+Mean-variance (250d) & 1.919 & 38.9\% & 40.0\% & 0.89 & -35.4\% & 1.05 & 10.1\% & 10.1\% \\
+Mean-variance, cost-aware (120d) & 1.311 & 14.6\% & 38.5\% & 0.53 & -37.7\% & 0.38 & 1.3\% & 1.3\% \\
+ARX-conditional mean-variance & 0.934 & -3.4\% & 18.7\% & -0.08 & -30.3\% & -0.11 & 24.6\% & 24.6\% \\
+S\&P 500 (SPY) buy \& hold & 1.424 & 19.5\% & 16.5\% & 1.16 & -18.8\% & 1.04 & -- & -- \\
+\hline
+\end{tabular}
+\caption{Benchmark comparison, medians (median over 100 portfolios).}
+\label{tab:bench_median_oos2026}
+\end{table*}

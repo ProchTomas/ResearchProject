@@ -1,0 +1,24 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+benchmark & $\Delta$Sharpe & 95\% CI & $p$ & win rate & $\Delta$max DD & $p$ & $\Delta$total ret. & $p$ \\
+\hline
+RA, legacy softmax solver & -0.19 & [-0.25, -0.12] & $<$0.001 & 30\% & -5.2\% & $<$0.001 & -0.174 & $<$0.001 \\
+Equal-weight, rebalanced & -0.21 & [-0.28, -0.14] & $<$0.001 & 26\% & -5.4\% & $<$0.001 & -0.191 & $<$0.001 \\
+Equal-weight, buy \& hold & -0.15 & [-0.22, -0.08] & $<$0.001 & 36\% & -5.6\% & $<$0.001 & -0.133 & $<$0.001 \\
+Inverse volatility (60d) & -0.30 & [-0.36, -0.24] & $<$0.001 & 16\% & -5.6\% & $<$0.001 & -0.192 & $<$0.001 \\
+Min-variance (120d) & -0.30 & [-0.36, -0.24] & $<$0.001 & 15\% & -4.1\% & $<$0.001 & -0.131 & $<$0.001 \\
+Min-variance (250d) & -0.25 & [-0.30, -0.19] & $<$0.001 & 20\% & -3.9\% & $<$0.001 & -0.098 & $<$0.001 \\
+Mean-variance (120d) & +0.57 & [+0.50, +0.65] & $<$0.001 & 92\% & +10.7\% & $<$0.001 & +0.358 & $<$0.001 \\
+Mean-variance (250d) & +0.78 & [+0.71, +0.84] & $<$0.001 & 98\% & +8.3\% & $<$0.001 & +0.477 & $<$0.001 \\
+Mean-variance, cost-aware (120d) & +0.72 & [+0.65, +0.78] & $<$0.001 & 99\% & +10.7\% & $<$0.001 & +0.473 & $<$0.001 \\
+ARX-conditional mean-variance & +0.73 & [+0.63, +0.83] & $<$0.001 & 97\% & +5.6\% & $<$0.001 & +0.386 & $<$0.001 \\
+S\&P 500 (SPY) buy \& hold & +0.53 & [+0.47, +0.60] & $<$0.001 & 94\% & -3.7\% & $<$0.001 & +0.319 & $<$0.001 \\
+\hline
+\end{tabular}
+\caption{Paired comparison of the Risk-Averse policy against every benchmark across portfolios: mean difference of the annualised Sharpe ratio with bootstrap 95\% CI, Wilcoxon signed-rank $p$-value, fraction of portfolios in which RA is better; the same for maximum drawdown (positive = smaller drawdown) and total return.}
+\label{tab:bench_paired_bear2022}
+\end{table*}

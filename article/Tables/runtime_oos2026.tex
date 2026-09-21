@@ -1,0 +1,17 @@
+\begin{table*}[ht!]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrr}
+\hline
+variant & regressors selected & setup [s] & time / step [s] & fallbacks \\
+\hline
+Risk-Averse (RA) & 42 / 136 & 2.4 & 0.08 & 0 \\
+RA, legacy softmax solver & 42 / 136 & 2.3 & 0.07 & 0 \\
+Risk-Neutral loss & 42 / 136 & 2.3 & 0.07 & 0 \\
+RA, no forgetting & 42 / 136 & 2.4 & 0.06 & 0 \\
+\hline
+\end{tabular}
+\caption{Computational cost per portfolio (means): regressors kept by the structure estimation out of the full set, prior + structure estimation time, and wall time per trading day of the online loop (single core).}
+\label{tab:runtime_oos2026}
+\end{table*}

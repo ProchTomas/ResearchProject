@@ -1,0 +1,22 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrrrrrr}
+\hline
+strategy & \multicolumn{3}{c}{2019-01 -- 2020-12} & \multicolumn{3}{c}{2021-01 -- 2022-12} & \multicolumn{3}{c}{2023-11 -- 2025-10} & \multicolumn{3}{c}{2024-09 -- 2026-09} \\
+ & Sharpe & max DD & return & Sharpe & max DD & return & Sharpe & max DD & return & Sharpe & max DD & return \\
+\hline
+Risk-Averse (RA) & 0.71 & -40\% & 1.39 & 0.77 & -28\% & 1.37 & 0.34 & -25\% & 1.11 & 0.53 & -23\% & 1.20 \\
+RA, legacy softmax solver & 1.46$^{*}$ & -37\% & 2.27 & 0.96$^{*}$ & -23\% & 1.55 & 0.63$^{*}$ & -27\% & 1.26 & 1.04$^{*}$ & -25\% & 1.55 \\
+Equal-weight, rebalanced & 1.48$^{*}$ & -36\% & 2.29 & 0.98$^{*}$ & -23\% & 1.56 & 0.66$^{*}$ & -27\% & 1.27 & 1.06$^{*}$ & -25\% & 1.56 \\
+Equal-weight, buy \& hold & 1.79$^{*}$ & -41\% & 3.75 & 0.92$^{*}$ & -23\% & 1.51 & 0.77$^{*}$ & -29\% & 1.36 & 1.01$^{*}$ & -26\% & 1.55 \\
+Inverse volatility (60d) & 1.37$^{*}$ & -35\% & 1.99 & 1.06$^{*}$ & -23\% & 1.57 & 0.55$^{*}$ & -26\% & 1.20 & 0.91$^{*}$ & -25\% & 1.39 \\
+Min-variance (250d) & 1.17$^{*}$ & -33\% & 1.70 & 1.01$^{*}$ & -24\% & 1.47 & 0.56$^{*}$ & -23\% & 1.18 & 0.67$^{*}$ & -21\% & 1.24 \\
+Mean-variance (250d) & 1.66$^{*}$ & -44\% & 4.66 & -0.01$^{*}$ & -37\% & 0.90 & 0.69$^{*}$ & -40\% & 1.57 & 0.83$^{*}$ & -35\% & 1.85 \\
+S\&P 500 (SPY) buy \& hold & 0.93$^{*}$ & -34\% & 1.49 & 0.23$^{*}$ & -24\% & 1.05 & 1.58$^{*}$ & -19\% & 1.62 & 1.16$^{*}$ & -19\% & 1.42 \\
+\hline
+\end{tabular}
+\caption{Mean annualised Sharpe ratio, maximum drawdown and total return over 100 random portfolios (200 for the paper window) in four 500-day test windows: 2019--2020 contains the COVID crash, 2021--2022 the 2022 bear market, 2023--2025 is the window of the previous sections, 2024--2026 lies after the paper's data. Each window uses its own 250-day warm-up. $^{*}$: Sharpe ratio differs from that of the Risk-Averse policy at $p<0.01$ (paired Wilcoxon).}
+\label{tab:regimes}
+\end{table*}

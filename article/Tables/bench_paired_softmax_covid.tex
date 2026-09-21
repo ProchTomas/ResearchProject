@@ -1,0 +1,24 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+benchmark & $\Delta$Sharpe & 95\% CI & $p$ & win rate & $\Delta$max DD & $p$ & $\Delta$total ret. & $p$ \\
+\hline
+Risk-Averse (RA) & +0.75 & [+0.69, +0.82] & $<$0.001 & 99\% & +3.3\% & $<$0.001 & +0.879 & $<$0.001 \\
+Equal-weight, rebalanced & -0.02 & [-0.02, -0.02] & $<$0.001 & 3\% & -0.1\% & $<$0.001 & -0.024 & $<$0.001 \\
+Equal-weight, buy \& hold & -0.33 & [-0.36, -0.30] & $<$0.001 & 0\% & +4.6\% & $<$0.001 & -1.486 & $<$0.001 \\
+Inverse volatility (60d) & +0.09 & [+0.07, +0.11] & $<$0.001 & 81\% & -1.7\% & $<$0.001 & +0.277 & $<$0.001 \\
+Min-variance (120d) & +0.12 & [+0.06, +0.17] & $<$0.001 & 61\% & -4.2\% & $<$0.001 & +0.404 & $<$0.001 \\
+Min-variance (250d) & +0.29 & [+0.23, +0.35] & $<$0.001 & 84\% & -3.3\% & $<$0.001 & +0.569 & $<$0.001 \\
+Mean-variance (120d) & -0.43 & [-0.49, -0.37] & $<$0.001 & 9\% & +16.3\% & $<$0.001 & -4.932 & $<$0.001 \\
+Mean-variance (250d) & -0.20 & [-0.26, -0.14] & $<$0.001 & 25\% & +7.8\% & $<$0.001 & -2.391 & $<$0.001 \\
+Mean-variance, cost-aware (120d) & -0.40 & [-0.45, -0.35] & $<$0.001 & 7\% & +15.1\% & $<$0.001 & -4.257 & $<$0.001 \\
+ARX-conditional mean-variance & +0.68 & [+0.62, +0.74] & $<$0.001 & 98\% & +0.3\% & 0.623 & +0.859 & $<$0.001 \\
+S\&P 500 (SPY) buy \& hold & +0.53 & [+0.46, +0.59] & $<$0.001 & 94\% & -2.9\% & $<$0.001 & +0.776 & $<$0.001 \\
+\hline
+\end{tabular}
+\caption{Paired comparison of the legacy (softmax) policy against every benchmark.}
+\label{tab:bench_paired_softmax_covid}
+\end{table*}

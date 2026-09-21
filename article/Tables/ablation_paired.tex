@@ -1,0 +1,22 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+benchmark & $\Delta$Sharpe & 95\% CI & $p$ & win rate & $\Delta$max DD & $p$ & $\Delta$total ret. & $p$ \\
+\hline
+RA, legacy softmax solver & -0.32 & [-0.40, -0.23] & $<$0.001 & 26\% & +1.1\% & 0.138 & -0.161 & $<$0.001 \\
+RA, SMALBE solver & -0.00 & [-0.00, +0.00] & 0.853 & 51\% & +0.0\% & 0.931 & -0.000 & 0.915 \\
+Risk-Neutral loss & +1.72 & [+1.58, +1.87] & $<$0.001 & 99\% & +55.4\% & $<$0.001 & +0.847 & $<$0.001 \\
+RA, no forgetting & -0.04 & [-0.08, +0.00] & 0.130 & 47\% & -2.9\% & $<$0.001 & -0.002 & 0.667 \\
+RA, exp. forgetting 0.99 & +0.21 & [+0.15, +0.28] & $<$0.001 & 74\% & +0.7\% & 0.077 & +0.095 & $<$0.001 \\
+RA, no structure est. & +1.19 & [+1.04, +1.35] & $<$0.001 & 94\% & +38.8\% & $<$0.001 & +0.614 & $<$0.001 \\
+RA, flat prior & -0.35 & [-0.43, -0.26] & $<$0.001 & 23\% & +0.9\% & 0.238 & -0.178 & $<$0.001 \\
+RA, horizon 5 & -0.00 & [-0.00, +0.00] & 0.100 & 42\% & -0.0\% & 0.022 & -0.000 & 0.267 \\
+RA, Thompson sampling & +1.97 & [+1.80, +2.15] & $<$0.001 & 100\% & +38.0\% & $<$0.001 & +0.684 & $<$0.001 \\
+\hline
+\end{tabular}
+\caption{Paired comparison of the Risk-Averse policy against its ablations.}
+\label{tab:ablation_paired}
+\end{table*}

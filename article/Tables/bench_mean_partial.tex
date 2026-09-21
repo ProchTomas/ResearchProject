@@ -1,0 +1,23 @@
+\begin{table*}[ht!]
+\centering
+\small
+\begin{tabular}{lrrrrrrrr}
+\hline
+strategy & total return & ann. return & ann. vol. & Sharpe (ann.) & max DD & Calmar & turnover/day & cost paid \\
+\hline
+Risk-Averse (RA) & 1.107 & 4.9% & 19.6% & 0.33 & -27.1% & 0.26 & 17.5% & 17.5% \\
+Equal-weight, rebalanced & 1.279 & 12.9% & 20.8% & 0.67 & -26.3% & 0.53 & 1.6% & 1.6% \\
+Equal-weight, buy \& hold & 1.359 & 16.4% & 22.0% & 0.78 & -27.9% & 0.62 & 0.0% & 0.0% \\
+Inverse volatility (60d) & 1.199 & 9.3% & 18.9% & 0.56 & -25.7% & 0.40 & 2.3% & 2.3% \\
+Min-variance (120d) & 1.130 & 6.2% & 17.7% & 0.42 & -24.0% & 0.30 & 2.8% & 2.8% \\
+Min-variance (250d) & 1.191 & 9.1% & 17.3% & 0.59 & -22.6% & 0.46 & 2.0% & 2.0% \\
+Mean-variance (120d) & 1.250 & 11.2% & 36.8% & 0.44 & -40.8% & 0.30 & 15.5% & 15.5% \\
+Mean-variance (250d) & 1.531 & 22.6% & 36.7% & 0.66 & -39.9% & 0.63 & 8.8% & 8.8% \\
+Mean-variance, cost-aware (120d) & 1.356 & 15.9% & 36.1% & 0.55 & -41.1% & 0.42 & 1.0% & 1.0% \\
+ARX-conditional mean-variance & 0.213 & -55.6% & 48.3% & -1.52 & -83.1% & -0.66 & 172.6% & 172.6% \\
+S\&P 500 (SPY) buy \& hold & 1.624 & 27.7% & 16.3% & 1.58 & -18.8% & 1.48 & -- & -- \\
+\hline
+\end{tabular}
+\caption{Benchmark comparison on the 500 test days 2023-11-03 to 2025-10-31, all strategies on the same random 8--12 stock portfolios, 0.2\% proportional transaction cost (mean over 55 portfolios).}
+\label{tab:bench_mean_partial}
+\end{table*}

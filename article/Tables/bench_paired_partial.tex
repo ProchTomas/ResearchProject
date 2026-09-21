@@ -1,0 +1,22 @@
+\begin{table*}[ht!]
+\centering
+\small
+\begin{tabular}{lrrrrrrrr}
+\hline
+benchmark & $\Delta$Sharpe & 95\% CI & Wilcoxon $p$ & win rate & $\Delta$max DD & Wilcoxon $p$ & $\Delta$total ret. & Wilcoxon $p$ \\
+\hline
+Equal-weight, rebalanced & -0.35 & [-0.46, -0.23] & $<$0.001 & 18% & -0.8% & 0.295 & -0.172 & $<$0.001 \\
+Equal-weight, buy \& hold & -0.45 & [-0.56, -0.33] & $<$0.001 & 15% & +0.8% & 0.558 & -0.252 & $<$0.001 \\
+Inverse volatility (60d) & -0.23 & [-0.33, -0.12] & $<$0.001 & 25% & -1.4% & 0.091 & -0.092 & $<$0.001 \\
+Min-variance (120d) & -0.09 & [-0.19, +0.00] & 0.125 & 42% & -3.1% & 0.002 & -0.023 & 0.397 \\
+Min-variance (250d) & -0.26 & [-0.36, -0.16] & $<$0.001 & 29% & -4.5% & $<$0.001 & -0.084 & $<$0.001 \\
+Mean-variance (120d) & -0.11 & [-0.25, +0.04] & 0.157 & 44% & +13.7% & $<$0.001 & -0.142 & 0.002 \\
+Mean-variance (250d) & -0.33 & [-0.49, -0.17] & $<$0.001 & 25% & +12.8% & $<$0.001 & -0.423 & $<$0.001 \\
+Mean-variance, cost-aware (120d) & -0.22 & [-0.35, -0.09] & $<$0.001 & 35% & +14.0% & $<$0.001 & -0.248 & $<$0.001 \\
+ARX-conditional mean-variance & +1.84 & [+1.67, +2.02] & $<$0.001 & 100% & +56.0% & $<$0.001 & +0.894 & $<$0.001 \\
+S\&P 500 (SPY) buy \& hold & -1.26 & [-1.38, -1.13] & $<$0.001 & 0% & -8.3% & $<$0.001 & -0.517 & $<$0.001 \\
+\hline
+\end{tabular}
+\caption{Paired comparison of the Risk-Averse policy against every benchmark across portfolios: mean difference of the annualised Sharpe ratio with bootstrap 95\% CI, Wilcoxon signed-rank $p$-value, fraction of portfolios in which RA is better; the same for maximum drawdown (positive = smaller drawdown) and total return.}
+\label{tab:bench_paired_partial}
+\end{table*}

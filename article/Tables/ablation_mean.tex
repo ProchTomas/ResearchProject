@@ -1,0 +1,23 @@
+\begin{table*}[ht!]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrrrr}
+\hline
+strategy & total return & ann. return & ann. vol. & Sharpe (ann.) & max DD & Calmar & turnover/day & cost paid \\
+\hline
+Risk-Averse (RA) & 1.126 & 5.6\% & 19.4\% & 0.37 & -25.5\% & 0.36 & 14.8\% & 14.8\% \\
+RA, legacy softmax solver & 1.287 & 13.3\% & 21.0\% & 0.68 & -26.6\% & 0.53 & 2.9\% & 2.9\% \\
+RA, SMALBE solver & 1.126 & 5.6\% & 19.4\% & 0.37 & -25.5\% & 0.36 & 14.8\% & 14.8\% \\
+Risk-Neutral loss & 0.279 & -50.5\% & 47.5\% & -1.35 & -80.8\% & -0.60 & 155.4\% & 155.4\% \\
+RA, no forgetting & 1.128 & 6.0\% & 17.9\% & 0.41 & -22.6\% & 0.37 & 14.8\% & 14.8\% \\
+RA, exp. forgetting 0.99 & 1.032 & 1.3\% & 17.7\% & 0.15 & -26.1\% & 0.12 & 20.1\% & 20.1\% \\
+RA, no structure est. & 0.512 & -31.6\% & 40.7\% & -0.82 & -64.2\% & -0.44 & 106.8\% & 106.8\% \\
+RA, flat prior & 1.304 & 14.0\% & 21.0\% & 0.72 & -26.3\% & 0.57 & 1.6\% & 1.6\% \\
+RA, horizon 5 & 1.126 & 5.6\% & 19.4\% & 0.37 & -25.5\% & 0.36 & 14.8\% & 14.8\% \\
+RA, Thompson sampling & 0.442 & -37.1\% & 27.5\% & -1.60 & -63.4\% & -0.50 & 118.7\% & 118.7\% \\
+\hline
+\end{tabular}
+\caption{Ablation study: each row removes or replaces one component of the Risk-Averse policy (mean over 100 portfolios).}
+\label{tab:ablation}
+\end{table*}
