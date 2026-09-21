@@ -1,0 +1,291 @@
+\documentclass[final,3p,times,twocolumn]{elsarticle}
+%\usepackage{natbib}
+\usepackage{amsmath}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{datetime}
+\usepackage{url}
+\usepackage{bm}
+\usepackage{bbold}
+%\usepackage{color}
+\usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{epstopdf}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{graphicx}
+\usepackage{latexsym}
+ \usepackage[a-1b]{pdfx}
+\newcommand{\mat}[1]{\mathbf{#1}}                        % matrix
+\newcommand{\sqmat}[1]{\mat{#1}^{\frac{1}{2}}}
+\newcommand{\sqmatT}[1]{\mat{#1}^{\frac{\top}{2}}}
+\newcommand{\tildemat}[1]{\tilde{\mat{#1}}}
+\newcommand{\com}[1]{{\color{blue}@@@#1@@@}}             % comment for discussions
+\newcommand{\bl}[1]{{\color{blue}#1}}                    % marks text changed in this revision
+\newcommand{\blt}[1]{\texorpdfstring{\bl{#1}}{#1}}          % blue (sub)section title, safe in bookmarks
+
+
+\begin{document}
+\title{Bayesian Adaptive Portfolio Optimisation Exploiting Fully Probabilistic Design}
+
+\author[1]{Tom\'{a}\v{s} Proch\'{a}zka and Miroslav K\'{a}rn\'{y}}%[<options>]
+\ead{\{prochazka,school\}@utia.cas.cz}
+\ead[url]{http://www.utia.cas.cz/AS}
+\affiliation[1]{organization={The Czech Academy of Sciences, Institute of Information Theory and Automation, Department of Adaptive Systems},
+            addressline={Pod Vod\'{a}renskou v\v{e}\v{z}\'{i} 1143/4},
+            city={Prague 8},
+            postcode={182 00},
+           country={Czech Republic}}
+
+\begin{abstract} Web of Science reports more than eighteen thousand items concerning portfolio optimisation, and Google Scholar reports more than three and a half million. It indicates the topic's importance and provokes the question of
+whether it makes sense to add a new item to this pile.
+The paper positively answers it by offering:\\
+$\checkmark$  Bayesian learning of an autoregressive model with exogenous variables
+that: $\bullet$ optimally chooses the conjugate prior probability density function of unknown parameters; $\bullet$ \bl{estimates the model structure by a genetic search over an exact Bayesian criterion}; $\bullet$ tracks the parameter changes via an optimised data-based forgetting, which robustifies \bl{estimation against outlying observations}; $\bullet$  employs a safe updating of a sufficient statistic;\\
+$\checkmark$  Use of the autoregressive model for expected multi-step quadratic-loss design of the decision policy that:
+$\bullet$ relies on numerically safe, feasible square root optimisation with receding-horizon design; $\bullet$ elicits optimal weights in quadratic loss, exploiting the fully probabilistic design of the decision policy that guarantees proper handling of risks in a non-traditional but consistent way; $\bullet$ opens a way to off-line design with Thompson's sampling of parameters, which leads to a reliable prediction of the quality of the obtained policy.
+
+\bl{The solution is complete in the sense that every step, from the choice of the prior to the constrained design, is derived within a single framework.} Our solution can also be applied to many other decision-making problems. \bl{Practically, the number of hyperparameters is small, and the experiments identify the two that matter. A paired comparison on 200 random portfolios and four market windows against standard benchmarks (equal-weight, minimum-variance, mean-variance, the S\&P~500), an ablation of every component, a sensitivity study, and stress tests on synthetic data with known parameters are reported with the released code. The policy has consistently smaller drawdowns than mean-variance allocation and its adaptive forgetting rejects outlying observations as designed; it does not outperform the equal-weight portfolio after transaction costs, and the experiments locate the reason in the elicitation of the risk weight and in the strength of the optimal prior.}
+\end{abstract}
+
+\maketitle
+\journal{Omega}
+
+\noindent\textbf{Keywords:} portfolio optimisation, probabilistic modelling, adaptive decision-making, fully probabilistic design\footnote{This work was supported by CTU SGS25/167/OHK4/3T/14, EU-COST Action CA24136\,\&\,by the TALISMAN Laboratory.}
+
+\subsection*{Highlights}
+\begin{itemize}
+\item complete, consistent, and analytical solution of the hard trading problem
+\item structure estimation and hierarchical priors
+\item \bl{novel adaptive forgetting, rejecting outlying observations}
+\item novel elicitation of the risk-aware quadratic loss
+\item \bl{numerically safe implementation and few tuning knobs}
+\item \bl{paired benchmark, ablation and stress-test study with released code}
+ \end{itemize}
+
+%\tableofcontents
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{Sections/Introduction}
+\input{Subsections/Pipeline}
+\input{Sections/Model}
+\input{Subsections/Prior}
+\input{Subsections/SE}
+\input{Subsections/Forgetting}
+\input{Sections/LQR}
+\input{Subsections/Optimization}
+% \input{Subsections/Exploration}
+\input{Sections/Experiments_v2}
+\input{Sections/Conclusions}
+
+\section*{Contribution, Competing Interest, Data and Software Access}
+T. Proch\'{a}zka contributed to writing, reviewing, software, data handling and experiments. M.\ K\'{a}rn\'{y} provided  conceptualisation, and contributed to writing  and reviewing.
+
+The authors have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\label{s:software} \bl{Public data were used only. The complete code, the data preparation and the scripts that regenerate every table and figure of Sec.~\ref{s:experiments} are available at \url{https://github.com/ProchTomas/ResearchProject}.}
+
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{Pet:81}
+V.~Peterka, {B}ayesian system identification, in: P.~Eykhoff (Ed.),
+  Trends\,\&\,Progress in System Identification, 1981, pp. 239--304.
+
+\bibitem{KarKul:88}
+M.~K\'{a}rn\'{y}, R.~Kulhav\'{y}, Structure determination of regression-type
+  models for adaptive prediction and control, in: J.~Spall (Ed.), {B}ayesian
+  Analysis of Time Series and Dynamic Models, Marcel Dekker, 1988.
+
+\bibitem{Kar:25a}
+M.~K\'{a}rn\'{y}, Optimised conjugate prior for model structure estimation in
+  the exponential family, Expert Systems with Applications 283 (2025) 127716.
+
+\bibitem{Kul:93a}
+R.~Kulhav{\'y}, Implementation of {B}ayesian parameter estimation in adaptive
+  control and signal processing, The Statistician 42 (1993) 471--482.
+
+\bibitem{AstWit:94}
+K.~{A}str{\"{o}}m, B.~Wittenmark, Adaptive Control, Addison-Wesley, 1994.
+
+\bibitem{Kar:19}
+M.~K\'{a}rn\'{y}, Fully probabilistic design unifies and supports dynamic
+  decision making under uncertainty, Inf. Sci. 509 (2020) 104--18.
+
+\bibitem{dostal2009optimal}
+Z.~Dost{\'a}l, Optimal Quadratic Programming Algorithms: With Applications to
+  Variational Inequalities, Springer Optimization and Its Applications,
+  Springer US, 2009.
+
+\bibitem{haldurai2016study}
+L.~Haldurai, T.~Madhubala, R.~Rajalakshmi, A study on genetic algorithm and its
+  applications, Int. J. Comput. Sci. Eng 4~(10) (2016) 139--143.
+
+\bibitem{BenLeaPue:25}
+S.~Benati, M.~Leal, J.~Puerto, Bilevel portfolio optimization with ordered
+  pricing models, Omega 133 (2025) 103274.
+\newblock \href {https://doi.org/https://doi.org/10.1016/j.omega.2024.103274}
+  {\path{doi:https://doi.org/10.1016/j.omega.2024.103274}}.
+
+\bibitem{LiGaoShu:26}
+B.~Li, Q.~Gao, Y.~Shu, Modeling of portfolio optimization with returns
+  uncertainty and cross-efficiency evaluation, Omega 143 (2026) 103566.
+\newblock \href {https://doi.org/https://doi.org/10.1016/j.omega.2026.103566}
+  {\path{doi:https://doi.org/10.1016/j.omega.2026.103566}}.
+
+\bibitem{LyuWuGuoGuChi:24}
+B.~Lyu, B.~Wu, S.~Guo, J.-W. Gu, W.-K. Ching, Robust online portfolio
+  optimization with cash flows, Omega 129 (2024) 103169.
+\newblock \href {https://doi.org/https://doi.org/10.1016/j.omega.2024.103169}
+  {\path{doi:https://doi.org/10.1016/j.omega.2024.103169}}.
+
+\bibitem{michaud1989markowitz}
+R.~Michaud, The {M}arkowitz optimization enigma: {I}s ‘optimized’optimal?,
+  Financial analysts journal 45~(1) (1989) 31--42.
+
+\bibitem{abbracciavento2025model}
+F.~Abbracciavento, F.~Tappi, S.~Formentin, Model predictive control for
+  multi-period portfolio optimization: {A} trading-oriented learning approach,
+  International Journal of Control 98~(4) (2025) 754--764.
+
+\bibitem{ChePu:04}
+L.~Chen, P.~Pu, Survey of preference elicitation methods, Tech. Rep.
+  IC/2004/67, HCI Group Ecole Politechnique Federale de Lausanne, Switzerland
+  (2004).
+
+\bibitem{LQRPSOOptKalmanfilter}
+H.~Maghfiroh, M.~Nizam, M.~Anwar, A.~Ma’Arif, Improved {LQR} control using
+  {PSO} optimization and {K}alman filter estimator, IEEE Access 10 (2022)
+  18330--18337.
+
+\bibitem{Kar:25}
+M.~K{\'{a}}rn{\'{y}}, Optimized geometric pooling of probabilities for
+  information fusion and forgetting, Automatica 177 (2025) 112337.
+
+\bibitem{bogle2008black}
+J.~C. Bogle, Black monday and black swans, Financial Analysts Journal 64~(2)
+  (2008) 30--40.
+
+\bibitem{cura2009particle}
+T.~Cura, Particle swarm optimization approach to portfolio optimization,
+  Nonlinear analysis: {R}eal world applications 10~(4) (2009) 2396--2406.
+
+\bibitem{hedgingundertransactioncosts}
+J.~Primbs, {LQR} and receding horizon approaches to multi-dimensional option
+  hedging under transaction costs, in: Proceedings of the 2010 American Control
+  Conference, 2010, pp. 6891--6896.
+
+\bibitem{gunjan2023brief}
+A.~Gunjan, S.~Bhattacharyya, A brief review of portfolio optimization
+  techniques, Artificial Intelligence Review 56~(5) (2023) 3847--3886.
+
+\bibitem{karny2022fully}
+M.~K{\'a}rn{\'y}, Fully probabilistic design of strategies with estimator,
+  Automatica 141 (2022) 110269.
+
+\bibitem{Deg:70}
+M.~DeGroot, Optimal Statistical Decisions, McGraw-Hill, 1970.
+
+\bibitem{FeiShw:02}
+E.~Feinberg, A.~Shwartz, Handbook of Markov Decision Processes: {Me}thods \&
+  Applications, Kluwer, 2002.
+
+\bibitem{Ber:17}
+D.~Bertsekas, Dynamic Programming and Optimal Control, Athena Scientific, 2017.
+
+\bibitem{Bretthorst1990}
+G.~Bretthorst, An Introduction to Parameter Estimation Using {B}ayesian
+  Probability Theory, Springer Netherlands, Dordrecht, 1990, pp. 53--79.
+
+\bibitem{Pro:26}
+T.~Proch\'{a}zka, Adaptive portfolio optimization, draft of master thesis,
+  FNSPE, CTU, Prague (2026).
+
+\bibitem{Zel:76}
+A.~Zellner, An Introduction to {B}ayesian Inference in Econometrics, J. Wiley,
+  N.Y., 1976.
+
+\bibitem{Linetal:22}
+T.~Lindner, J.~J.~Puck, A.~Verbeke, Beyond addressing multicollinearity:
+  {R}obust quantitative analysis and machine learning in international business
+  research, Journal of International Business Studies 53~(7) (2022) 1307--1314.
+
+\bibitem{GolLoa:12}
+G.~Golub, C.~V. Loan, Matrix Computations, Johns Hopkins Univ. Press, 2012.
+
+\bibitem{Bir:77}
+G.~Bierman, Factorization Methods for Discrete Sequential Estimation, Academic
+  Press, N.Y., 1977.
+
+\bibitem{AbrSte:72}
+M.~Abramowitz, I.~Stegun, Handbook of Mathematical Functions, Dover Publ.,
+  N.Y., 1972.
+
+\bibitem{CavNea:19}
+J.~Cavanaugh, A.~Neath, The {A}kaike information criterion: {B}ackground,
+  derivation, properties, application, interpretation, and refinements, Wiley
+  Interdisciplinary Reviews: Computational Statistics 11~(3) (2019) e1460.
+
+\bibitem{KulLei:51}
+S.~Kullback, R.~Leibler, On information and sufficiency, Ann. Math. Stat. 22
+  (1951) 79--87.
+
+\bibitem{Kar:960280}
+M.~K\'{a}rn\'{y}, Towards fully probabilistic control design, Automatica
+  32~(12) (1996) 1719--22.
+
+\bibitem{Kar:20}
+M.~K\'{a}rn\'{y}, Minimum expected relative entropy principle, in: Proc. of the
+  18th ECC, Sankt Petersburg, 2020, pp. 35--40.
+
+\bibitem{Fel:6061}
+A.~Feldbaum, Theory of dual control, Autom. Remote Control 22 (1961) 3--19.
+
+\bibitem{KelBra:23}
+C.~Kellett, P.~Braun, Introduction to nonlinear control: {S}tability, control
+  design, and estimation, Princeton University Press, 2023.
+
+\bibitem{IzmSol:03}
+A.~Izmailov, M.~Solodov, Karush-{K}uhn-{T}ucker systems: regularity conditions,
+  error bounds and a class of {N}ewton-type methods, Mathematical Programming
+  95~(3) (2003) 631--650.
+
+\bibitem{4736103}
+J.~P. Kleijnen, Design of experiments: {O}verview, in: 2008 Winter Simulation
+  Conference, 2008, pp. 479--488.
+
+\bibitem{Rusetal:18}
+D.~Russo, B.~{Van Roy}, A.~Kazerouni, et~al., A tutorial on thompson sampling,
+  Foundations and Trends in Machine Learning 11~(1) (2018) 1--96.
+
+\bibitem{KarJen:900078}
+M.~K\'{a}rn\'{y}, T.~Jen\'{\i}\v{c}ek, W.~Ottenheimer, Contribution to prior
+  tuning of {LQG} selftuners, Kybernetika 26~(2) (1990) 107--121.
+
+\bibitem{KarRum:21a}
+M.~K\'{a}rn\'{y}, M.~Ruman, Mixture ratio modelling of dynamic systems, Int. J.
+  Adapt Control Signal Processing 35~(5) (2021) 660--675.
+
+\bibitem{SiBarPowWunsch:04}
+J.~Si, A.~Barto, W.~Powell, D.~Wunsch (Eds.), Handbook of Learning and
+  Approximate Dynamic Programming, Wiley, 2004.
+
+\end{thebibliography}
+
+%
+%\bibliographystyle{elsarticle-num}
+%\newcommand{\pat}[1]{c:/dokumenty/adapt/bibtex/#1}
+%%\newcommand{\pat}[1]{bibtex/#1}
+%\bibliography{\pat{world},\pat{world_classics},\pat{dept},\pat{mk},references}
+%\vfill
+%
+%\begin{flushright}
+%{\tiny file: c:/dokumenty/sip/papers-yearly/2026/portfolio/omega/omega.tex, \today}
+%\end{flushright}
+\end{document} 
