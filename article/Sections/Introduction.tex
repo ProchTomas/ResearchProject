@@ -1,0 +1,45 @@
+\section{Introduction} \label{s:introduction}
+The paper presents a structured, methodologically consistent approach to portfolio optimisation. It complements, improves and combines all the steps needed for an adaptive, feasible, and complete solution. It utilizes many known practices and results from Bayesian statistics, \cite{Pet:81,KarKul:88,Kar:25a}, tracking of parameter changes, \cite{Kul:93a}, linear-quadratic adaptive regulation (LQR), \cite{AstWit:94}, especially in the fully probabilistic design (FPD) version, \cite{Kar:19}, quadratic optimisation \cite{dostal2009optimal},  and an established search heuristics, \cite{haldurai2016study}. The main contribution of this article is unifying, improving upon, and connecting these parts. 
+
+The paper provides a systematic approach to decision-making that leverages the strong theoretical foundation and minimal requirements on user inputs. The presented design is useful not only on financial markets but, with slight modifications, to a wide variety of dynamic decision-making problems.
+
+\subsection*{On Related Work}
+
+The research in the field of quantitative portfolio optimisation spans a vast area of different views on the problem and its solution. To illustrate this, it suffices to take recent samples from this journal \cite{BenLeaPue:25,LiGaoShu:26,LyuWuGuoGuChi:24}.
+
+%\cite{AliWanWan:25,Laietal:20,ZhaWan:26}.
+
+Classical approaches \cite{michaud1989markowitz} frame the portfolio choice as a dual optimisation, where expected returns are maximised,  and variance is minimised. Many innovative approaches exist. For instance \cite{abbracciavento2025model}, which optimises the objective function tuned to directly meet users' (investors') preferences like an adverse to risk, a diversification priority and other user-specific needs. However, the complex choice among many possible configurations is left to the user's responsibility. This hinders the approach strength. It also makes an objective evaluation of the gain in performance hard.
+
+The systematic way to the specific version of the common preference elicitation problems \cite{ChePu:04} is a significant part of our solution. It optimises expected quadratic loss expressing portfolio-choice objectives. Together with the adopted, online estimated, autoregressive returns model with exogenous variables  (ARX), \cite{Pet:81}, the solution becomes a version of the linear quadratic regulator task, which is so common in the control domain, \cite{LQRPSOOptKalmanfilter}. The use of novel adaptive forgetting \cite{Kar:25} makes the resulting allocation more robust against black swan events, notoriously connected with financial markets \cite{bogle2008black}.
+
+In the portfolio optimisation context, the LQR setting was applied  in \cite{cura2009particle} to optimise the efficient frontier, meaning the relationship between portfolio returns and their variance. There, LQR is enhanced by particle swarm optimisation. LQR setup also applies to related tasks. For example, high-frequency trading is addressed as the continuous-time LQR for hedging portfolios on the options market. Unlike the multitude of academic papers, this solution considers transaction costs \cite{hedgingundertransactioncosts}.
+
+ Other typical instances of portfolio optimisation, including machine learning, are reviewed by \cite{gunjan2023brief}. The range of applied methods and the variability in the results indicate that the portfolio optimisation problem is far from being solved.
+
+\subsection*{Paper's Aim}
+This work aims to develop a solution that: $\bullet$ does not leave out any of its important subtasks;  $\bullet$ is as deductive as possible; $\bullet$ relies as little as possible on the user's tuning of the hyperparameters.
+
+\subsection*{Notation}  We consider a finite number of assets $N\in \mathbb{N} =$ natural numbers. The returns of individual assets are observed in discrete time $t\in \mathbb{N} \cup \{0\}$. They are denoted as  $y_{t}\in [-1,+\infty)^N$ with $y_{t}$ being an $N$-vector containing the returns of all $N$ assets indexed by $i\in\{1,\dots N\}$  $(y_{i,t})_{i=1}^N$. All of the considered assets are denominated in United States Dollar (USD). We do not consider currency risks\footnote{Assets denominated in currencies other than the USD carry the risk that this currency will be devalued in comparison to the USD, which is still universally accepted as a safe-haven asset.}.
+
+We use $z_{t}\in \mathbb{R}^{\rho},\ \rho \geq N$, $\mathbb{R}$ denotes the real line, a $\rho$-vector of other observed variables, possibly exogenous factors, at time $t$, as the regressors. $d_{i,t}\in[0,1)$, $i\in\{1,\ldots,N\}$, is the transaction cost associated with the asset $i$ at time $t$.
+
+The opted allocation of funds forms an $N$-vector $a_{t}$, which expresses percentages of the portfolio the respective assets occupy. This is the action at time $t$ in our decision-making task. We consider a spot portfolio with no leverage and short-selling. This poses constraints on the action space $ \{a\in\mathbb{R}^N\mid \mat{1}^{\top}a= 1, a\geq 0\}$.
+
+The collection of all data up to the time step $t$ is $\mathcal{D}^{(t)} = \big(\mathcal{D}^{(t-1)},(y_{t}, z_{t}, d_{t})\big)$, $\mathcal{D}^{(0)}$ marks prior knowledge.
+
+\subsection*{Explanation Basis and Layout}
+The market returns are modelled by a multivariate ARX model, Sec.\ \ref{s:model}. Its parameters are unknown, and the needed predictor is gained via Bayesian methodology, \cite{Pet:81}. We cover the choice of the prior probability density function (PDF), Sec.\ \ref{s:prior}, the model-structure estimation, Sec.\ \ref{s:SE}, and the parameter tracking with forgetting Sec.\ \ref{s:forgetting}.
+
+Parameter estimates are updated in real time. The newest point parameter estimate inserted into the ARX model provides the predictor that suits the policy optimisation formulated as an LQR task in Sec.\ \ref{s:lqrsection}.
+
+The policy design starts with the specification of the loss function that quantitatively expresses the user's desire to maximise expected returns, while including transaction costs and respecting uncertainty about future returns. The quantitative specification exploits the fully probabilistic design of decision policies, \cite{karny2022fully}.
+
+FPD extends classical decision-making theory,
+\cite{Deg:70,FeiShw:02}, and stochastic control, \cite{Ber:17}, see Sec.\ \ref{s:FPD}. It fits the adopted Bayesian estimation, \cite{Pet:81}, \cite{Bretthorst1990}, and helps us to integrate uncertainty-induced risks.
+
+The policy optimisation for the given quadratic loss and the ARX model is in Sec.\ \ref{s:lqrsection}. Similarly to the parameter estimation in Sec.\ \ref{s:model}, it cares about an efficient, numerically safe, square root implementation.
+
+%The Bayesian setup and the FPD framework allow us to employ Thompson's parameter sampling, \cite{Rusetal:18}. It serves as a tool for a prediction of the success of the designed policy without practically closing the decision loop, Sec.\ \ref{s:exploration}.
+
+Sec.\ \ref{s:experiments} \bl{reports a paired comparison with standard portfolio benchmarks, an ablation of every component of the pipeline, a sensitivity study and stress tests; it identifies the parts that carry the performance and the two design elements that limit it.} The paper is closed by comments in Sec.\ \ref{s:conclusions}. 

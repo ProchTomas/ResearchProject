@@ -1,0 +1,159 @@
+\section{Complete Learning of the Returns Model} \label{s:model}
+A multivariate autoregressive model with exogenous variables serves well for predicting market returns $y_{t}$.  This is a simple yet powerful common model.  It allows for an efficient Bayesian parameter estimation and gives the returns' predictor. The ARX model reads
+\begin{equation}\label{e:linearmodel}
+    y_{t} = \mat{P}^{\top}z_{t} + e_{t},\ z^{\top}_{t}=[a^{\top}_{t},x^{\top}_{t-1}] \quad e_{t} \sim \mathcal{N}(0, \mat{\Sigma}),
+\end{equation}
+where $\mat{P}$ is $(\rho, N)$-matrix of regression coefficients, $x_{t-1}$ is a vector of regressors. The $N$-vector $e_{t}$ is normally distributed noise with zero mean and covariance $\mat{\Sigma}$. The noise $e_{t}$ is independent of $z_{t}$ and $e_{\tau}$ for $\tau<t$.
+
+$\mat{P}$ and $\mat{\Sigma}^{-1}$ form an unknown parameter $\theta = (\mat{P}, \mat{\Sigma}^{-1})\in \Theta$ of the model. The corresponding parametric model, PDF marked throughout $p(\cdot)$ for the join, prior, posterior and predictive PDFs, $m(\cdot)$ for the returns model, and $r(\cdot)$ for rules of the decision policy, reads $  m(y_{t}|a_{t}, \mathcal{D}^{(t-1)}, \theta)$
+
+\begin{equation}
+    \label{e:cPDFlinearmodel}
+\hspace*{-4ex}   = \frac{\exp \left[-\frac{1}{2}(y_{t} -\mat{P}^{\top}z_{t})^{\top}\mat{\Sigma}^{-1}(y_{t} -\mat{P}^{\top}z_{t})\right]}{(2\pi)^{\frac{N}{2}}|\mat{\Sigma}|^{\frac{1}{2}}}.
+\end{equation}
+To get the predictor $p(y_{t+1}|a_{t+1}, \mathcal{D}^{(t)})$,
+where $\mathcal{D}^{(t)}$ marks knowledge available at time $t$, we use Bayes' rule
+\begin{equation}
+\label{e:parametersPDF}
+p(\theta|\mathcal{D}^{(t)}) = \frac{p(\mathcal{D}^{(t)}|\theta,\mathcal{D}^{(0)})p(\theta|\mathcal{D}^{(0)})}
+{\int_{\Theta}p(\mathcal{D}^{(t)}|\theta,\mathcal{D}^{(0)})p(\theta|\mathcal{D}^{(0)})d\theta}.
+\end{equation}
+As usual, the prior knowledge $\mathcal{D}^{(0)}$ in the prior PDF $p(\theta)=p(\theta|\mathcal{D}^{0})$ and other PDFs are implicitly present.
+
+The chain rule for PDFs provides the joint PDF of all available data conditioned on the unknown $\theta$
+(and $\mathcal{D}^{(0)}$)
+\begin{equation}
+ \label{e:chainrule}
+    \hspace*{-4ex}
+p(\mathcal{D}^{(t)}|\theta) = \prod_{\tau = 1}^{t} m(y_{\tau}|a_{\tau}, \mathcal{D}^{(\tau-1)}, \theta)r(a_{\tau}|\mathcal{D}^{(\tau-1)}, \theta)
+\end{equation}
+The parameter $\theta\in \Theta$ is unknown to the user who chooses the actions. Thus, PDFs describing the user's policy formed by randomised rules $r$ meet the natural conditions of control, \cite{Pet:81}, $\big(r(a_{t}|\mathcal{D}^{(t-1)}, \theta) = r(a_{t}|\mathcal{D}^{(t-1)})\big)_{t=1}^{H}$, where the considered horizon $H\in \mathbb{N}$. Under them, (\ref{e:parametersPDF}) is
+\begin{eqnarray}
+\nonumber
+\hspace*{-4ex}p(\theta|\mathcal{D}^{(t)}) &=& \frac{l(\mathcal{D}^{(t)},\theta)p(\theta)}{J(\mathcal{D}^{(t)})},
+\mbox{ where the denominator is}\\
+\nonumber
+\hspace*{-4ex}J(\mathcal{D}^{(t)})&=&
+\int_{\Theta} l(\mathcal{D}^{(t)},\theta)p(\theta)d\theta,\ \mbox{ and}\\
+\label{e:likelihooddef}
+\hspace*{-4ex}l(\mathcal{D}^{(t)},\theta) &=&\prod_{\tau = 1}^{t} m(y_{\tau}|a_{\tau}, \mathcal{D}^{(\tau-1)}, \theta)
+\end{eqnarray}
+is the likelihood function, i.e., the factor of the PDF (\ref{e:chainrule}) modelling environment (at fixed $\mathcal{D}^{(t)}$) depending on the possible parameter values.
+
+Using the likelihood function and the denominator (\ref{e:likelihooddef}) plus marginalisation, \cite{Pet:81}, we obtain the exact predictor of future returns
+\begin{equation}
+    \label{e:returnsPDF}
+    p(y_{t+1}| a_{t+1}, \mathcal{D}^{(t)}) = \frac{J(\mathcal{D}^{(t+1)})}{J(\mathcal{D}^{(t)})}.
+\end{equation}
+The likelihood (\ref{e:likelihooddef}) for the PDF (\ref{e:cPDFlinearmodel}) can be expressed as
+\begin{eqnarray*}
+    %\label{e:likelihoodwithV}
+    &&l(\mathcal{D}^{(t)}, \theta) = (2\pi)^{-N\frac{t}{2}} |\mat{\Sigma}|^{-\frac{t}{2}}\\
+ \nonumber
+  &\times&
+   \exp\bigg\{-0.5\text{tr}\Big[\mat{\Sigma}^{-1}
+   \begin{pmatrix}
+    -\mat{I}&
+    \mat{P}^{\top}
+    \end{pmatrix}
+    \tildemat{V}_{t}
+    \begin{pmatrix}
+    -\mat{I}\\
+    \mat{P}
+    \end{pmatrix}\Big]\bigg\}.
+\end{eqnarray*}
+The extended information matrix $\tildemat{V}_{t}$ and the counter $t$ form the sufficient statistic, i.e., $p(\theta|\mathcal{D}^{(t)})\propto p(\theta|\tildemat{V}_{t},t,\mathcal{D}^{(0)})$. They encapsulate the collected data and enrich the prior knowledge $\mathcal{D}^{(0)}=(\mat{V}_{0},\Delta_{0})$ to, see (\ref{e:linearmodel}),
+\begin{eqnarray}
+ \label{e:Vmatrix}
+    \mat{V}_{t} &=& \sum_{\tau = 0}^{t}
+    \begin{pmatrix}
+        y_{\tau}\\ z_{\tau}
+    \end{pmatrix}
+    \begin{pmatrix}
+        y_{\tau}^{\top} z_{\tau}^{\top}
+    \end{pmatrix} + \mat{V}_{0} = \tildemat{V}_{t} + \mat{V}_{0}\\
+  \nonumber      
+     \Delta_{t}&=& t + \Delta_{0}.
+\end{eqnarray}
+
+The matrix $\mat{V}_{0} >0$ and degrees of freedom $\Delta_{0}>\rho$ reflect the prior beliefs about $\theta$ quantified by conjugate (self-reproducing) Gauss-inverse-Wishart PDF, \cite{Pet:81,Zel:76}. The optimised choice of $\mat{V}_{0}$,  $\Delta_{0}$ is in Sec.\ \ref{s:prior}.
+ The matrix (\ref{e:Vmatrix}) is partitioned as
+\begin{equation}
+\label{e:Vpartition}
+    \mat{V}_{t} = \left(\begin{array}{cc}
+        \mat{V}_{y,t} & \mat{V}_{zy,t}^{\top} \\
+        \mat{V}_{zy,t} & \mat{V}_{z,t}
+    \end{array}\right),\hspace*{2ex}\mat{V}_{y,t}\in \mathbb{R}^{N,N},
+\end{equation}
+and the prior $\mat{V}_{0}$ is partitioned in the same way. The posterior likelihood with this prior is rewritten into
+\begin{eqnarray}
+\label{e:likelihood}
+&&\hspace*{-4ex}l(\mathcal{D}^{(t)},\theta)p(\theta)\\
+\nonumber
+&&\hspace*{-4ex}=\frac{\exp\left[-\frac{1}{2}\text{tr}\left(\mat{\Sigma}^{-1} (\mat{P} - \hat{\mat{P}}_{t})^{\top}\mat{V}_{z,t}(\mat{P} - \hat{\mat{P}}_{t}) + \mat{\Sigma}^{-1} \mat{\Lambda}_{t}\right)\right]}{(2\pi)^{N\frac{\Delta_{t}}{2}} |\mat{\Sigma}|^{\frac{\Delta_{t}}{2}}}.
+\end{eqnarray}
+The posterior parameter PDFs are
+\begin{eqnarray}
+\nonumber
+&&\hspace*{-4ex} p(\mat{P}|\mathcal{D}^{(t)}, \mat{\Sigma}^{-1})= \\
+\nonumber
+&&\hspace*{-4ex}\frac{\exp\left[-\frac{1}{2}\text{tr}\left(\mat{\Sigma}^{-1}(\mat{P} - \hat{\mat{P}}_{t})^{\top}\mat{V}_{z,t}(\mat{P}-\hat{\mat{P}}_{t})\right)\right]}{(2\pi)^{\frac{\rho N}{2}}|\mat{V}_{z,t}|^{-\frac{N}{2}}|\mat{\Sigma}|^{\frac{\rho}{2}}}\\
+\label{e:PDFSigma}
+&&\hspace*{-4ex}p(\mat{\Sigma}^{-1}|\mathcal{D}^{(t)})=\\
+\nonumber
+&&\hspace*{-4ex}\frac{|\mat{\Lambda}_{t}|^{\frac{\Delta_{t}-\rho+N+1}{2}}|\mat{\Sigma}|^{-\frac{\Delta_{t}-\rho}{2}}
+\exp\left[-\frac{1}{2}\text{tr}\left(\mat{\Sigma}^{-1}\mat{\Lambda}_{t}\right)\right]}
+{(2^{\Delta_{t}-\rho+N+1}\pi^{\frac{N-1}{2}})^{\frac{N}{2}}\prod_{j=1}^N\Gamma\left(\frac{\Delta_{t}-\rho+N+2-j}{2}\right)}.
+\end{eqnarray}
+They exploit the analytical form of $J(\mathcal{D}^{(t)})$
+(\ref{e:likelihooddef}), \cite{Pet:81},
+\begin{eqnarray}
+\nonumber
+J(\mathcal{D}^{(t)})&=&J(\mat{V}_{t},\Delta_{t})=
+(2\pi)^{\frac{\rho N}{2}}|\mat{V}_{z,t}|^{-\frac{N}{2}}
+|\mat{\Lambda}_{t}|^{-\frac{\Delta_{t}-\rho+N+1}{2}}\\
+\label{e:JARX}
+&&\hspace*{-14ex}\times\,
+(2^{\Delta_{t}-\rho+N+1}\pi^{\frac{N-1}{2}})^{\frac{N}{2}}
+\prod_{j=1}^N\Gamma\left(\frac{\Delta_{t}-\rho+N+2-j}{2}\right)\\
+\label{e:points}
+&&\hspace*{-12ex}\hat{\mat{P}}_{t}=\mat{V}_{z,t}^{-1}\mat{V}_{zy,t},\ \mat{\Lambda}_{t}=\mat{V}_{y,t}
+-  \mat{V}_{zy,t}^{\top}\mat{V}_{z,t}^{-1}\mat{V}_{zy,t}.
+\end{eqnarray}
+ The maxima of these PDFs are achieved at $\mat{P} = \hat{\mat{P}}_{t}$ and $\hat{\mat{\Sigma}}_{t}^{-1} = \Delta_{t}\mat{\Lambda}_{t}^{-1}$, respectively. The PDFs (\ref{e:PDFSigma}) and the denominator (\ref{e:JARX}) are exploited later on.
+
+Often, regressors are (almost) collinear, \cite{Linetal:22}. Then, the sub-matrix $\mat{V}_{z,t}$ is poorly conditioned, which makes evaluations of the posterior PDF non-robust. This is resolved by updating the square root of the (positive semi-definite) matrix $\mat{V}_{t}$, \cite{GolLoa:12}. The version suited to all learning parts is
+\begin{equation}
+    \label{e:VdecompositiontoG}
+    \mat{V}_{t} = \mat{G}_{t}\mat{G}_{t}^{\top}=\mat{G}_{t-1}\mat{G}_{t-1}^{\top}+
+    \begin{pmatrix}
+        y_{t}\\ z_{t}
+    \end{pmatrix}
+    \begin{pmatrix}
+        y_{t}^{\top} z_{t}^{\top}
+    \end{pmatrix},
+\end{equation}
+where $\mat{G}_{t}$ is an upper triangular matrix. The square root is partitioned as $\mat{V}_{t}$ in (\ref{e:Vpartition}), giving
+\begin{equation*}
+\mat{V}_{t}=\mat{G}_{t}\mat{G}_{t}^{\top} =
+\left(\begin{array}{cc}
+    \mat{G}_{y,t}\mat{G}_{y,t}^{\top} + \mat{G}_{zy,t}\mat{G}_{zy,t}^{\top}  & \mat{G}_{zy,t}\mat{G}_{z,t}^{\top} \\ \mat{G}_{z,t}\mat{G}_{zy,t}^{\top} &  \mat{G}_{z,t}\mat{G}_{z,t}^{\top}
+     \end{array}\right).
+\end{equation*}
+It provides the maximum a posteriori likelihood point estimates (\ref{e:points}) of unknown $\mat{P}$, $\mat{\Sigma}^{-1}$. The maximum of (\ref{e:PDFSigma}) is reached by minimising over $\mat{P}$ the quadratic norm
+\begin{equation*}
+\left|\left|\left(\begin{array}{cc}
+    \mat{G}_{y,t}^{\top} & \mat{O}\\ \mat{G}_{zy, t}^{\top} & \mat{G}_{z,t}^{\top}
+\end{array}\right)
+\begin{pmatrix}
+    -\mat{I} \\ \mat{P}
+\end{pmatrix}\right|\right|^2,
+\end{equation*}
+$\mat{O},\,\mat{I}$ are zero and unit matrix, respectively.
+This, together with simple maximisation over $\Sigma$, gives
+\begin{equation}
+\label{e:leastsquaresPwithG}
+ \hat{\mat{P}}_{t} = \mat{G}_{z,t}^{-\top}\mat{G}_{zy,t}^{\top},\hspace*{2ex}
+   \hat{\mat{\Sigma}}_{t}=\Delta_{t}\mat{\Lambda}_{t} \mbox{ with }   \mat{\Lambda}_{t} = \mat{G}_{y,t}\mat{G}_{y,t}^{\top}.
+\end{equation}
+The update $\mat{G}_{t-1}\rightarrow^{(y_{t}^{\top}\ z_{t}^{\top})} \mat{G}_{t}$ equivalent to (\ref{e:VdecompositiontoG}) involves one, numerically stable, orthogonal rotation, \cite{Bir:77}. Moreover, it allows simple evaluations of determinants as products of diagonal entries of square root factors, $|\mat{V}_{z,t}|=\prod_{k=1}^{\rho}G_{kk,z,t}^{2}$ and $|\mat{\Lambda}_{t}|=\prod_{k=1}^{N}G^{2}_{kk,y,t}$. They are needed whenever the denominator $J(\cdot)$ (\ref{e:likelihooddef}) is used, see Secs.\ \ref{s:SE} and \ref{s:forgetting}. 

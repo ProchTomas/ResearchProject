@@ -1,0 +1,104 @@
+\section{Design of Optimal Policy}\label{s:lqrsection} A relation of FPD, \cite{Kar:960280,Kar:20}, to LQR is exploited for the quantitative expression of decision aims, Sec.\ \ref{s:FPD}. Sec.\ \ref{s:optimization} outlines a numerically safe, square root version of the LQR under the constraint $a_{t}\in \{\mat{1}^{\top}a= 1, a\geq 0\}$, with $\mat{1}$ being a vector consisting of units.
+
+\subsection{Preference Quantification for LQR via FPD} \label{s:FPD}
+For simplicity of explanations, we model returns and regressors via the normal state-space form
+\begin{equation}\label{e:stateevolution}
+s_{t} = \mat{A}_{t-1}s_{t-1} + \mat{B}a_{t} + \epsilon_{t}, \quad \epsilon\sim\mathcal{N}(0, \mat{\Sigma}_{\epsilon}),
+\end{equation}
+with the non-minimal state $s_{t}$ defined
+\begin{equation*}
+%\label{e:statedefinition}
+\hspace*{-3ex}s_{t}^{\top} = \begin{pmatrix}
+    a_{t}^{\top} & a_{t-1}^{\top}& y_{t}^{\top} & x_{t}^{\top} & 1
+\end{pmatrix},\ s_{t} \in \mathbb{R}^{3N+\rho + 1}.
+\end{equation*}
+The inclusion of consecutive actions helps to respect the transaction costs.  The matrices in (\ref{e:stateevolution}) are constructed using the certainty-equivalence approximation, which replaces the unknown parameter by its newest point estimate\footnote{This approximation is less harmful than it looks. We assume small investors whose individually selected actions have no influence on the markets. Thus, even exact dual policies \cite{Fel:6061} cannot enhance estimation quality. The no-influence setup also makes a priori the closed decision loop, bounded-input bounded-output, stable \cite{KelBra:23}.}. They read
+\begin{equation}
+    \label{e:evolutionmatrices}
+    \mat{A}_{t-1} = \left(\begin{array}{cccc}
+        \mat{O} & \mat{O} &\dots   &  0\\
+        \mat{I}  & \mat{O} & \dots&0 \\
+        \hat{\mat{P}}_{t-1} & \mat{O}&0 \\
+        \mat{O} & \mat{O} & \hat{\mat{X}}_{t-1}&0\\
+         0^{\top} &  0^{\top} &  0^{\top} &1
+    \end{array}\right),
+    \quad \mat{B} =
+    \left(\begin{array}{c}
+        \mat{I} \\
+        \mat{O} \\
+        \mat{O} \\
+        \mat{O}\\
+           0^{\top}
+    \end{array}\right),
+\end{equation}
+$\mat{A}_{t-1} \in \mathbb{R}^{3N+\rho+1, 3N+\rho+1}$, $\mat{B}\in\mathbb{R}^{3N+\rho+1, N}$, and $\hat{\mat{X}}_{t-1}$ is the matrix that models the evolution of regressors $x_{t}=\hat{\mat{X}}_{t-1}x_{t-1}+\epsilon_{x,t}$, with $\epsilon_{x,t}\sim \mathcal{N}(0,\hat{\mat{\Sigma}}_{x})$. Often, $\hat{\mat{X}}_{t-1}$ can be chosen as a constant matrix realising a shift in $x_{t-1}$, and new parts are modelled as a random walk. If need be, it can be estimated in the same way as the regression coefficients $\mat{P}$.
+
+The covariance matrix $\mat{\Sigma}_{\epsilon} = \mathrm{diag}[\mat{O},\mat{O},\hat{\mat{\Sigma}}_{t-1},\hat{\mat{\Sigma}}_{x},0]$.
+
+As said, FPD generalises classical dynamic decision and stochastic control theories. It uses the same model and its learning as those theories, but instead of optimising expected performance index (reward, loss) it minimises KLD $D(p_{r}||p^{I})$ of the joint PDF $p_{r}(\mathcal{D}^{H})=\prod_{t=1}^{H}m(s_{t}|a_{t},s_{t-1})r(a_{t}|s_{t-1})$ modelling the closed decision loop with the inspected decision rules $r$ up to a horizon $H\in \mathbb{N}$ to its \emph{ideal} counterpart $p^{I}(\mathcal{D}^{H})=\prod_{t=1}^{H}m^{I}(s_{t}|a_{t},s_{t-1})r^{I}(a_{t}|s_{t-1})$ expressing the decision aims and constraints.
+
+For the normal linear state-space model, normal linear decision rules (among which the optimal rules $r^{\ast}$ lie) and analogically specified ideal, KLD becomes expectation of a sum of quadratic forms with the positions and kernels implied by the moments of $(m^{I}(s_{t}|a_{t},s_{t-1})r^{I}(a_{t}|s_{t-1}))_{t=1}^{H}$. All addends behave in the same way, so that we can focus on a single one.
+
+We exploit the above simple observation for constructing the \emph{ideal} PDF that aligns with the user's (investor's) goal to minimise the transaction costs
+\begin{equation}
+\nonumber
+(a_{t}-a_{t-1})^{\top}\mat{D}_{t-1}(a_{t}-a_{t-1})
+\end{equation}
+ given by the known matrix $\mat{D}_{t-1}=\mathrm{diag}[d_{1,t-1},\ldots,d_{N,t-1}]$ where $d_{i,t-1}>0$ is the given cost of the making transaction $a_{i,t-1}\rightarrow a_{i,t}$ with the asset $i\in\{1,\ldots,N\}$. This is the goal unambiguously expressed by the ideal rule $r^I(a_{t}|s_{t-1}) \sim \mathcal{N}(a_{t-1}, \mat{D}^{-1}_{t-1})$.
+
+At the same time, the user wants to maximise their return $a^{\top}_{t}y_{t}$. The corresponding ideal PDF is to modify the
+reality modelling PDF $m(s_{t}|a_{t},s_{t-1})$. It should prefer configurations of $s_{t}$ and $a_{t}$ with a high return. Schwarz's inequality confirms that this wish is met by the ideal
+\begin{eqnarray}
+\nonumber
+&&\hspace*{-9ex}m^I(s_{t}|a_{t},s_{t-1}) \propto m(s_{t}|a_{t},s_{t-1})\exp[\omega a^{\top}_{t}y_{t}]=\\
+\nonumber
+                  &&\hspace*{-9ex}\mathcal{N}_{s}(\mat{A}_{t-1}s_{t-1}+\mat{B}a_{t},\mat{\Sigma}_{\epsilon}).
+\end{eqnarray}
+The optional scalar $\omega > 0$ balances two contradictory users' aims. Rules of the risk-averse policy are gained by considering the worst possible result
+\begin{equation}
+    \label{e:idealbehaviourminomega}
+ (\omega^{\ast},r^{\ast})\in \mathrm{arg}  \max_{\omega>0} \min_{r} D(p_{r}||p^{I}).
+\end{equation}
+
+Taking into account that PDF $m$ and $m^{I}$ entering (\ref{e:idealbehaviourminomega})  are two Gaussian distributions with identical covariance $\mat{\Sigma}_{\epsilon}$, differing in their expectation by $\omega \hat{\mat{\Sigma}}_{t-1}a_{t}$, we get
+\begin{equation*}
+D(m||m^{I}) = 0.5\omega^{2}a^{\top}_{t}\hat{\mat{\Sigma}}_{t-1}a_{t}.
+\end{equation*}
+Using this, the selected $r^I(a_{t}|s_{t-1})$, and the fact that the inner minimisation (\ref{e:idealbehaviourminomega}) can be found analytically, \cite{Kar:960280},  the outer maximisation in (\ref{e:idealbehaviourminomega}) is equivalent to, cf.\,(\ref{e:leastsquaresPwithG}),
+\begin{eqnarray}
+\nonumber
+&&\hspace*{-5.0ex}\omega^{\ast}= \mathrm{arg} \max_{\omega> 0}\int \exp\bigg[\\
+\nonumber
+&&\hspace*{-5.0ex}-0.5\left((a_{t} - a_{t-1})^{\top}\mat{D}_{t-1}(a_{t}-a_{t-1}) +\hspace*{-0.3ex}\omega^{2}a^{\top}_{t}\hat{\mat{\Sigma}}_{t-1}a_{t}\right)\bigg]\mathrm{d}a_{t}\\
+\nonumber
+&&\hspace*{-5.0ex}=\mathrm{arg} \max_{\omega> 0}\big(\ln|\mat{E}_{t-1}| + a_{t-1}^{\top}(\mat{D}_{t-1} - \mat{D}_{t-1}\mat{E}^{-1}_{t-1}\mat{D}_{t-1})a_{t-1}\big)\\
+\nonumber
+&&\hspace*{-5.0ex}\mat{E}_{t-1} = \mat{D}_{t-1} +\omega^2\hat{\mat{\Sigma}}_{t-1},\hspace*{1ex}\hat{\mat{\Sigma}}_{t-1}=\Delta_{t-1}\mat{G}_{y,t-1}\mat{G}^{\top}_{y,t-1}.
+\end{eqnarray}
+Differentiation of the minimised function with respect to $\omega$ provides the necessary (and in this case sufficient) condition for an extreme
+\begin{equation*}
+\omega\text{tr}\left(\mat{E}^{-1}_{t-1}\hat{\mat{\Sigma}}_{t-1}\right) +\omega a_{t-1}^{\top}\mat{D}_{t-1}\mat{E}^{-1}_{t-1}\hat{\mat{\Sigma}}_{t-1}\mat{E}^{-1}_{t-1}\mat{D}_{t-1}a_{t-1}=0.
+\end{equation*}
+The optimal $\omega_{t-1}=\omega^{\ast}$ is evaluated using a simple root-finding algorithm. \bl{Both addends of this condition are non-negative for $\mat{D}_{t-1}\succ\mat{O}$, $\hat{\mat{\Sigma}}_{t-1}\succeq\mat{O}$ and $\omega>0$, so it has no root in $(0,\infty)$ and the implementation returns an end point of the searched interval. Sec.~\ref{s:sensitivity} quantifies what this costs and treats the upper end $\omega_{\max}$ as the user-set quantity it effectively is.} \com{MK: the outer maximisation (\ref{e:idealbehaviourminomega}) decreases monotonically in $\omega$ and needs revisiting.} The partial quadratic loss reads\footnote{Importantly, we assume the small investor with a negligible influence on the market, i.e.\
+with $z_{t}=x_{t-1}$.}
+%\begin{equation*}
+%L = -\omega a^{\top}\mu + (a-a_{-1})^{\top}\mat{D}(a)(a-a_{-1}) + 0.5\omega^2 a^{\top}\mat{\Sigma}a,
+%\end{equation*}
+%where we have to use the point estimates for $\mu$ and $\mat{\Sigma}$, see Sec.\ \ref{s:model}, $\hat{y} = \mat{P}^{\top}x$, $\hat{\mat{\Sigma}} = \frac{1}{\Delta}\mat{G}_f\mat{G}_f^{\top}$. This loss can be written as a quadratic criterion $\mat{Q}\geq0$,
+\begin{eqnarray}
+\label{e:lossmatrixQdefinition}
+&&\hspace*{-6ex}\begin{pmatrix}
+    a^{\top}_{t} & a_{t-1}^{\top} & x^{\top}_{t-1}\hat{P}_{t-1}
+\end{pmatrix}\mat{Q}_{t-1}
+\begin{pmatrix}
+    a_{t} \\ a_{t-1} \\ \hat{P}^{\top}_{t-1}x_{t-1}
+\end{pmatrix},\\
+\nonumber
+&&\hspace*{-6ex}\mat{Q}_{t-1} = \left(\begin{array}{ccc}
+        \mat{C}_{t-1} & -\mat{D}_{t-1} & -\frac{\omega_{t-1}}{2}\mat{I} \\
+        -\mat{D}_{t-1} & \mat{D}_{t-1}\mat{C}^{-1}_{t-1}\mat{D}_{t-1} & \frac{\omega_{t-1}}{2}\mat{D}_{t-1}\mat{C}_{t-1}^{-1}\\
+        -\frac{\omega_{t-1}}{2}\mat{I} & \frac{\omega_{t-1}}{2}\mat{C}^{-1}_{t-1}\mat{D}_{t-1} & \frac{\omega^2_{t-1}}{4}\mat{C}^{-1}_{t-1}
+    \end{array}\right),
+\end{eqnarray}
+where $\mat{C}_{t-1} = \mat{D}_{t-1} + 0.5\omega^{2}_{t-1}\hat{\mat{\Sigma}}_{t-1}$ is positive definite, while $\mat{Q}_{t-1}$ is generally positive semi-definite. The externally supplied regressors are not penalised. Thus, $ \mat{Q}_{t-1}$ (\ref{e:lossmatrixQdefinition})  complemented appropriately by zeros determines the optimised expectation $E[s^{\top}_{t}\mat{Q}_{t-1}s_{t}|a_{t},s_{t-1}]$.
+

@@ -1,0 +1,14 @@
+
+\section{Conclusions} \label{s:conclusions}
+
+\bl{The paper gives a complete, internally consistent solution of the adaptive portfolio-optimisation problem, from the choice of the prior to a numerically safe constrained design, and evaluates it with a paired protocol that any alternative can be plugged into. The evaluation does not confirm that the solution pays back in its present form: after transaction costs the policy is dominated by the equal-weight portfolio, while it does deliver smaller drawdowns than mean-variance allocation and rejects outlying observations as designed. The ablation and sensitivity studies locate the two elements responsible, the elicitation of the risk weight $\omega$, which has no interior optimum, and the strength of the optimal prior combined with the forgetting, which prevents the model from learning beyond its initial estimate. Both are local and are the first items of future work; the released code makes the corresponding experiments a matter of changing one line.}
+
+An immediate enrichment concerns exploration that may significantly help the large investors influencing the market. The randomised nature of the FPD optimal policy is directly beneficial in this respect, as it naturally adds an adequate random component to poorly exciting actions, which would result from the standard LQR solution. 
+
+The randomisation effect can be enhanced by the use of Thompson's sampling \cite{Rusetal:18}, which may additionally serve for off-line prediction of
+the achieved quality even without closing the decision loop. It suffices to exploit the fact that the unknown parameter $\theta\in\Theta$ is described by the available PDF $p(\theta|\mathcal{D}^{\bar{t}})$. This allows: $\bullet$ sample
+$\theta^{k} \sim p(\theta|\mathcal{D}^{\bar{t}})$; $\bullet$ perform the optimisation (LQR design) with this parameter; $\bullet$ use the gained sample of the final loss-to-go $v^{k}(s)$ for a (non)parametric estimate of its PDF, cf.\ \cite{KarJen:900078}.
+
+The PDF gained in the off-line mode provides the mentioned prediction of the achievable quality. In online mode, it allows for robustifying the design, which makes the gained policy even more risk-aware.
+
+The most promising advancement is the use of more general models. Mixture ratios, \cite{KarRum:21a}, are our favourite as they offer an efficient \bl{way to address} black swan events, \cite{bogle2008black}. It needs, however,  to reach solution completeness. It requires elaborating an efficient structure estimation, safe numerical implementation for mixed (continuous and discrete) modelled random variables, and the corresponding, inevitably approximate, dynamic programming, \cite{SiBarPowWunsch:04}.
