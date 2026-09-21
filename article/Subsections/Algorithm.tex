@@ -1,0 +1,52 @@
+\subsection{\blt{End-to-End Algorithm}} \label{s:algorithm}
+Algorithm~1 (Fig.~\ref{alg:pipeline}) summarises the complete procedure as implemented in the released code (function \texttt{bench.policy.run\_policy}). Table~\ref{tab:hyper} lists every user-set quantity.
+
+\begin{figure}[ht!]
+\begin{minipage}{\columnwidth}
+\noindent\rule{\linewidth}{0.6pt}\par\vspace{2pt}
+\noindent\textbf{Algorithm 1} Bayesian adaptive portfolio optimisation\par
+\noindent\rule{\linewidth}{0.4pt}\par\vspace{2pt}
+\noindent\textbf{Input:} returns $y_t\in\mathbb{R}^N$, candidate regressors $\bar{z}_t\in\mathbb{R}^{\bar\rho}$, cost matrix $\mat{D}$, prior weights $(\alpha_0,\beta_0)$, shrinkage $\mu$, warm-up lengths $\bar{t}$, $T$.\\[2pt]
+\noindent\emph{Off-line (days $1\ldots T$)}
+\begin{enumerate}\setlength{\itemsep}{0pt}
+\item Collect $\tilde{\mat{V}}_{\bar t}=\sum_{\tau\le\bar t}(y_\tau^\top,\bar z_\tau^\top)^\top(y_\tau^\top,\bar z_\tau^\top)$; solve the scalar equation of Sec.~\ref{s:prior} for $\Delta_0$; form $(\mat{V}_0,\mat{G}_0)$.
+\item Accumulate $\mat{V}_T=\mat{V}_0+\sum_{\bar t<\tau\le T}(\cdot)(\cdot)^\top$; run the genetic algorithm of Sec.~\ref{s:SE} on $\ln l(u)$ \eqref{e:loglikelihoodk}; keep the regressors $z_t\subset\bar z_t$ of the maximiser $u^*$; restrict $\mat{V}_0$ to $(y_t,z_t)$ and recompute its square root $\mat{G}_0$.
+\item Set $\mat{G}_T=\mat{G}_0$, $\Delta_T=\Delta_0$, $a_T=\mathbf{1}/N$, $\mat{H}_T=\epsilon\mat{I}$.
+\end{enumerate}
+\noindent\emph{On-line (each trading day $t>T$)}
+\begin{enumerate}\setlength{\itemsep}{0pt}\setcounter{enumi}{3}
+\item \textbf{Predict:} $\hat{\mat{P}}=\mat{G}_{zy}^\top\mat{G}_{z}^{-\top}$, $\hat y_t=\hat{\mat{P}}^\top z_t$, $\hat{\mat{\Sigma}}=\mat{G}_y\mat{G}_y^\top/\Delta_{t-1}$ \eqref{e:leastsquaresPwithG}.
+\item \textbf{Elicit risk weight:} $\omega^*=\arg\min_{\omega>0}$ of \eqref{e:idealbehaviourminomega} given $\mat{D}$, $\hat{\mat{\Sigma}}$, $a_{t-1}$; build $\mat{Q}_{t-1}$ \eqref{e:lossmatrixQdefinition}.
+\item \textbf{Design:} one Riccati step of Sec.~\ref{s:optimization} from $\mat{H}_{t-1}$ gives $(\mat{H}_a,\mat{H}_s)$; solve the constrained QP $\min_{a\in\Omega_{BE}}\|\mat{H}_a a+\mat{H}_s s_{t-1}\|^2$ (SMALBE, or any simplex-QP solver); output $a_t$.
+\item \textbf{Trade} to $a_t$, pay $\mat{D}$-proportional costs, observe $y_t$.
+\item \textbf{Learn:} minimise the forgetting criterion $F(\alpha,\beta,\gamma)$ of Sec.~\ref{s:forgetting} on the simplex (Nelder--Mead in the softmax parametrisation); update $\mat{G}_t$ by the orthogonal rotation of Sec.~\ref{s:forgetting} and $\Delta_t=(\alpha^*+\beta^*)\Delta_{t-1}+\beta^*+\gamma^*\Delta_0$.
+\item \textbf{Propagate loss-to-go:} $\mat{H}_t=\phi^*\mat{H}_{t-1}+(1-\phi^*)\mat{H}_t^{\rm new}$ with $\phi^*$ minimising the KLD criterion of Sec.~\ref{s:optimization}.
+\end{enumerate}
+\noindent\rule{\linewidth}{0.6pt}
+\end{minipage}
+\caption{The complete procedure (Algorithm 1); step numbers refer to the released implementation.}
+\label{alg:pipeline}
+\end{figure}
+
+\begin{table}[ht!]
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.40\columnwidth}>{\raggedright\arraybackslash}p{0.32\columnwidth}@{}}
+\hline
+quantity & role & value \\
+\hline
+$\mu$ & prior shrinkage, Sec.~\ref{s:prior} & 0.9 \\
+$\alpha_0,\beta_0$ & prior forgetting weights, Sec.~\ref{s:forgetting} & 0.09, 0.5 \\
+$\phi_0$ & prior weight of loss-to-go mixing & 0.1 \\
+$\bar t$, $T$ & prior / structure warm-up [days] & 125, 125 \\
+$h$ & receding horizon & 1 \\
+$\mat{D}$ & transaction cost per unit traded & $0.002\,\mat{I}$ \\
+$\bar z_t$ & candidate regressors & 10 lags, 3 EMA differences, 3 sines, intercept \\
+GA & batch, $p_{mut}$, $\alpha_{decay}$, iterations & 8, 0.5, 0.992, 500 \\
+$\omega_{\max}$ & upper bound of the risk-weight search & $10^3$ \\
+\hline
+\end{tabular}
+\caption{All user-set quantities of the experiments. $\mu$, $\alpha_0$, $\beta_0$ were chosen by a $2^k$ design on 2021--2022 data, disjoint from the test period; the remaining values are conventional defaults that were not tuned.}
+\label{tab:hyper}
+\end{table}

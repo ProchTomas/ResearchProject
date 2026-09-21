@@ -1,0 +1,111 @@
+\subsection{Optimisation}\label{s:optimization}
+Dynamic programming \cite{Ber:17} is a universal tool for designing the optimal causal policy. It realises the backwards induction from the finite receding horizon $\tau+h$ to the current time $\tau$. The minimising arguments in the next functional equation evolving the value function $v(s_{t})$ (also known as loss-to-go)  are optimal actions, $t=\tau+h,\ldots,\tau$,
+\begin{eqnarray*}
+   % \label{e:CSQP_statement}
+    &&\hspace*{-8ex}v(s_{t-1})= \min_{a_{t}\in \Omega_{BE}}\text{E}\bigg[\bigg|\bigg|\sqmat{Q}_{t-1} s_{t}\bigg|\bigg|^{2} + v(s_{t})\bigg| a_{t},\mathcal{D}^{(t-1)}\bigg].
+\end{eqnarray*}
+ In our case, it becomes a constrained sequential quadratic programming problem with
+\begin{eqnarray}
+\nonumber
+\Omega_{BE} &=&\{a\in\mathbb{R}^N\mid \mat{1}^{\top}a= 1, a\geq 0\}\\
+\nonumber
+v(s_{t}) &=& ||\mat{H}_{t}s_{t}||^2 + \psi_{t},\ \mat{H}_{\tau+h}=\mat{O},\ \psi_{\tau+h}=0,
+\end{eqnarray}
+The matrix $\mat{H}_{t}$ is kept in an upper triangular form, and the scalar shift $\psi_{t}$ is independent of the data.
+The adopted optimisation builds upon the semi-monotonic augmented Lagrangian algorithm for inequalities and equalities constrained minimisation, \cite{dostal2009optimal}. The procedure is divided into two phases, the outer and inner loop.
+
+The outer loop of the algorithm minimises the Lagrangian in which the scalar $\lambda$ cares about the considered equality constraint and propagates the estimated loss-to-go matrix $\mat{H}$ back in time.
+\begin{eqnarray}
+ \nonumber
+    &&\hspace*{-8ex}\min_{a_{t}}\text{E}\left[\left|\left|\begin{pmatrix}\sqmat{Q}_{t-1} &\mat{H}_{t}\end{pmatrix}
+    s_{t}\right|\right|^2\bigg| a_{t}, \mathcal{D}^{(t-1)}\right] + \psi_{t} + \lambda(\mat{1}^{\top}a_{t} -1).
+ \end{eqnarray}
+The matrix $\begin{pmatrix}\sqmat{Q}_{t-1} &\mat{H}_{t}\end{pmatrix}$
+    is mapped by an orthogonal transformation to an upper triangular matrix, denoted $\mat{H}^{'}_{t}$. Applying expectation gives
+\begin{eqnarray}
+\nonumber
+v(s_{t-1})& =&\min_{a_{t}} \left|\left|\mat{H}^{'}_{t}\begin{pmatrix}\mat{B} & \mat{A}_{t-1}\end{pmatrix}
+\begin{pmatrix}a_{t}\\
+s_{t-1} \end{pmatrix}\right|\right|^2 \\
+\nonumber
+&+& \text{tr}(\mat{H}^{'\top}_{t} \mat{H}^{'}_{t}\mat{\Sigma}^{\frac{\top}{2}}\mat{\Sigma}^{\frac{1}{2}}) + \psi_{t} + \lambda(\mat{1}^{\top}a_{t} -1).
+\end{eqnarray}
+The matrix $\mat{H}^{'}_{t}\begin{pmatrix}\mat{B} & \mat{A}_{t-1}\end{pmatrix}$ is orthogonally rotated to the upper triangular form.  The resulting matrix within the norm and the shift are
+\begin{eqnarray*}
+&&\hspace*{-9ex}\tildemat{H}_{t}=\left(\begin{array}{cc}
+    \tildemat{H}_{t, a^{\ast}} & \tildemat{H}_{t, s} \\
+    \mat{O} & \tilde{\tildemat{H}}_{t-1}
+\end{array}\right),\ \psi_{t-1} = \psi_{t} + \text{tr}(\mat{H}^{'\top}_{t}\mat{H}^{'}\mat{\Sigma}^{\frac{\top}{2}}\mat{\Sigma}^{\frac{1}{2}}).\\
+&&\hspace*{-9ex}\tildemat{H}_{t, a^{\ast}}\in\mathbb{R}^{N,N},\ \tildemat{H}_{t, s}\in \mathbb{R}^{N, 3N+\rho+1},\ \tilde{\tildemat{H}}_{t-1}\in \mathbb{R}^{2N+\rho+1, 3N+\rho+1}.
+\end{eqnarray*}
+The multiplier $\lambda$ can be found explicitly. An additional rotation and (now unconstrained!) optimisation provide the updated matrix $\mat{H}$
+ with $e^{\top}_{N}=[0,\dots,0,1]$
+\begin{equation*}
+\left|\left|\begin{pmatrix} \tilde{\tildemat{H}}_{t-1}\\
+\mat{1}\frac{e_N^{\top} + \mat{1}^{\top}\tildemat{H}_{t, a^{\ast}}^{-1}\tildemat{H}_{t,s}}{\mat{1}^{\top}\tildemat{H}_{t, a^{\ast}}\mat{1}}
+\end{pmatrix}s_{t-1}\right|\right|^2 = ||\mat{H}_{t-1}s_{t-1}||^2.
+\end{equation*}
+
+The second phase realises the inner loop of the algorithm, which concerns the inequality constraint. At the time $\tau$, it uses an iterative algorithm that finds the optimal action that satisfies both constraints.
+
+It is formally stated as in \cite{dostal2009optimal}, see Sec.\ 6.2,
+\begin{equation}
+    \label{e:SMALBEdef}
+    \min_{a\in{\Omega_{BE}}}f(a), \quad f(a) = 0.5a^{\top}\tildemat{H}_a^{\top}\tildemat{H}_aa - (\tildemat{H}_ss)^{\top}\tildemat{H}_aa,
+\end{equation}where $\tildemat{H}$ is the matrix from the last step of the Riccati recursion, gained from
+$$\mat{H}^{'}_{\tau}\begin{pmatrix}\mat{B} & \mat{A}_{\tau-1}\end{pmatrix}.$$ The augmented Lagrangian introduces a regularisation parameter $\xi$,
+\begin{equation*}
+    %\label{e:lagrangian}
+    \mathcal{L}(a, \bar{\lambda}, \xi) = f(a) + \mat{W}^{\top}\bar{\lambda} + 0.5\xi ||\mat{W}a||^2,
+\end{equation*}
+with gradient $ \nabla\mathcal{L}(a, \bar{\lambda}, \xi)$
+\begin{equation*}
+    %\label{e:gradientoflagrangian}
+    \hspace*{-4ex}= (\tildemat{H}_a^{\top}\tildemat{H}_a + \xi \mat{W}^{\top}\mat{W})a - (\tildemat{H}_ss)^{\top}\tildemat{H}_aa + \mat{W}^{\top}\bar{\lambda},
+\end{equation*}
+where $\bar{\lambda}$ is the multiplier $\lambda$ from the last step of the Ricatti recursion.
+
+The algorithm solves for the bound constraint in the inner loop and simultaneously updates the Lagrange multiplier $\bar{\lambda}$ for the equality constraints in the outer loop. The multiplier $\bar{\lambda}$ and softmax\footnote{In Thompson's sampling, it may be the case that the matrix $\tildemat{H}_{t,a^{\ast}}$ in the Ricatti recursion is ill-conditioned for inversion, then we take the previous action as the initial guess.} of the action vector $a^{\ast}$, computed previously, initiate the inner loop.
+
+The Karush-Kuhn-Tucker conditions \cite{IzmSol:03}, which have to be satisfied to ensure the uniqueness of the feasible solution, are
+\begin{equation*}
+    %\label{e:KKTconditions}
+    g\geq \mat{O}, \quad g^{\top}(a - \mat{l}) = 0.
+\end{equation*}
+The augmented Lagrangian in the square root formalism converts this problem back to the original minimisation (\ref{e:SMALBEdef}).
+\begin{equation}
+    \label{e:SMALBEdefaugmented}
+    \mathcal{L}_{aug}(a, \bar{\lambda}, \xi) = f(a) = \frac{1}{2}a^{\top}\tildemat{H}_{aug}^{\top}\tildemat{H}_{aug}a - \mat{b}_{aug}a,
+\end{equation}
+\begin{equation*}
+\mbox{where }\hspace*{1ex} \tildemat{H}_{aug} = \begin{pmatrix}
+    \tildemat{H}_a \\ \sqrt{\xi}\mat{1}^{\top}
+\end{pmatrix}, \quad \mat{b}_{aug} = -\tildemat{H}_a\tildemat{H}_ss-\mat{1}^{\top}\bar{\lambda} - \xi \mat{1}^{\top},
+\hspace*{2ex}\
+\end{equation*}
+with gradient
+$
+    g = \tildemat{H}_{aug}^{\top}\tildemat{H}_{aug}a - \mat{b}_{aug}.
+$
+At each iteration in the inner loop, the action is updated via the gradient projection method
+\begin{eqnarray}
+\nonumber
+&&\hspace*{-8.5ex}a^{(k+1)} = a^{(k)} - w^{(k)} g(a^{(k)}, \lambda^{(k)}, \xi^{(k)}),\ w^{(k)} =- \frac{g^{\top}h}{h^{\top}\tildemat{H}_a^{\top}\tildemat{H}_ah}\\
+\nonumber
+&&\hspace*{-8ex}
+\mbox{where } h = \left\{\begin{array}{lll}
+0       &\mbox{if }& a\leq \mat{O} \land g\geq \mat{0}\\
+-g      & &\text{otherwise}
+\end{array}\right..\hspace*{8ex}\
+\end{eqnarray}
+We update the Lagrange multiplier
+\begin{equation}
+\nonumber
+\bar{\lambda}^{(k+1)} = \bar{\lambda}^{(k)} + \xi^{(k)} \mat{1}^{\top}a^{(k)}.
+\end{equation}
+If the constraint violation $\mat{1}^{\top}a^{(k+1)} - 1$ is too large, we adjust the regularisation parameter
+$
+\xi^{(k+1)} = b\xi^{(k)}.
+$
+The book \cite{dostal2009optimal} recommends
+$\xi^{(0)} \in [0.5, 1.5]$, $b \in [2, 10]$ as the values for these hyperparameters. At last, we check for convergence. 

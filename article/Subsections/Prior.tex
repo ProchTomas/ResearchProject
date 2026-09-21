@@ -1,0 +1,64 @@
+\subsection{Optimal Hierarchical Choice of Prior PDF}\label{s:prior}
+For the inspected model (\ref{e:linearmodel}), the conjugate prior is the Gaussian-inverse-Wishart PDF. The prior PDF is specified by $(\mat{V}_{0}, \Delta_{0})$, where $\mat{V}_{0} > 0$ is a prior extended information matrix and  $\Delta_{0} > \rho$  is the prior degrees of freedom. Their influence
+on the estimation process is significant, especially on the structure estimation performed in off-line mode on $\bar{t}$ data records, see Sec.\ \ref{s:SE}.
+
+The paper \cite{Kar:25a} provides the optimal choice $({\mat{V}}_{0}, {\Delta}_{0})$ by maximising the marginal likelihood as a function of the explicitly expressed prior knowledge
+\begin{equation*}
+l(\mathcal{D}^{(\bar{t})}|\mat{V}_{0}, \Delta_{0}) := \int_{\Theta}p(\mathcal{D}^{(\bar{t})}|\theta)p(\theta|\mat{V}_{0},\Delta_{0})d\theta=
+\frac{J(\mat{V}_{\bar{t}},\Delta_{\bar{t}})}{J(\mat{V}_{0},\Delta_{0})}
+\end{equation*}
+under the weakest common constraint that $(\mat{V}_{0}, \Delta_{0})$ must make the prior PDF proper. The mentioned paper proves the existence of this extreme, gives its form, and verifies its positive influence.
+
+Operationally, the construction form $\bar{t}$ data records is as follows. First, we map the data on the square root $\tilde{\mat{G}}_{\bar{t}}$ of the extended information matrix with zero prior
+\begin{equation*}
+%\label{e:matrixVforpriorconstruction}
+\tilde{\mat{V}}_{\bar{t}} = \sum_{\tau=1}^{\bar{t}} \begin{pmatrix}
+    y_{\tau}\\ z_{\tau}
+\end{pmatrix}\begin{pmatrix}
+    y_{\tau}^{\top}  z_{\tau}^{\top}
+\end{pmatrix} + \mat{O}=\tilde{\mat{G}}_{\bar{t}}\tilde{\mat{G}}_{\bar{t}}^{\top}.
+\end{equation*}
+It depends on the processed data $( y_{\tau}^{\top}  z_{\tau}^{\top})_{\tau=1}^{\bar{t}}$ only.
+
+Then, we select a scalar tuning parameter $\mu \in (0, 1)$. This scalar optional parameter controls the shrinkage strength of the resulting prior PDF. The optimal prior degrees of freedom $\Delta_{0}$ are found by numerically solving the next nonlinear scalar equation with a unique solution
+\begin{equation*}
+%\label{e:solve_v0}
+-\frac{1}{2} \ln(\mu) = \frac{\frac{1}{2}(1 - \mu)\bar{t}}{ \bar{t} + (1 - \mu)\Delta_{0}} + h(\Delta_{0}) - h(\bar{t} + \Delta_{0}),
+\end{equation*}
+where $\bar{t}$ is the number of processed data, and $h(\Delta)$ is a function involving the digamma function $\Psi(\chi) = \frac{\mathrm{d}}{\mathrm{d}\chi}\ln(\Gamma(\chi))$, $\chi>0$, \cite{AbrSte:72},
+\begin{equation*}
+h(\Delta) := \ln(0.5\Delta) - \Psi(0.5\Delta).
+\end{equation*}
+
+
+With the value of $\Delta_{0}$, the optimal prior matrix $\mat{V}_{0}$ is constructed analytically using the data-based statistics $\tilde{\mat{V}}_{\bar{t}}$ and $\mu$ as follows $\mat{V}_{0}= $
+\begin{equation*}
+\hspace*{-1.5ex}
+\begin{pmatrix}
+\frac{\mu \Delta_{0}}{\bar{t}+(1-\mu)\Delta_{0}}\tilde{\mat{V}}_{y,\bar{t}}\hspace*{-0.2ex}+\hspace*{-0.2ex} \frac{\mu\bar{t}}{\bar{t}(1-\mu) + (1-\mu)^2\Delta_{0}} \tilde{\mat{V}}_{zy,\bar{t}}^{\top} \tilde{\mat{V}}_{z,\bar{t}}^{-1} \tilde{\mat{V}}_{zy,\bar{t}} &\hspace*{-0.5ex}\frac{\mu}{1-\mu}\tilde{\mat{V}}_{zy,\bar{t}}^{\top} \\
+\frac{\mu}{1-\mu} \tilde{\mat{V}}_{zy,\bar{t}} &\hspace*{-0.5ex}\frac{\mu}{1-\mu} \tilde{\mat{V}}_{z,\bar{t}}
+\end{pmatrix}
+\end{equation*}
+
+Experiments confirmed that the described choice of $(\mat{V}_{0}, \Delta_{0})$ makes the structure and parameter estimation visibly more stable than the usual ``textbook'' options.
+
+The prior derived in this way is intuitively interpreted as a shrinkage prior. It is equivalent to setting the prior point estimates (\ref{e:points}) to
+\begin{eqnarray}
+\nonumber
+\hat{\mat{P}}_{0} &=&\tilde{\mat{V}}_{z,\bar{t}}^{-1}\tilde{\mat{V}}_{zy,\bar{t}},\hspace*{2ex}
+\mat{V}_{z,0}=\frac{\mu}{1-\mu}\tilde{\mat{V}}_{z,\bar{t}}
+\\
+\nonumber
+\mat{\Lambda}_{0} &=&\frac{\mu\Delta_{0}}{\bar{t} + (1-\mu)\Delta_{0}}\left(\tilde{\mat{V}}_{y,\bar{t}} - \tilde{\mat{V}}_{zy,\bar{t}}^{\top}\tilde{\mat{V}}_{z,\bar{t}}^{-1}\tilde{\mat{V}}_{zy,\bar{t}}\right).
+\end{eqnarray}
+
+This is a profound result. It effectively sets the prior mean of the coefficients as centred exactly on the data-based statistics. The prior beliefs about the uncertainty of the coefficients (given by the Kronecker product $\Delta^{-1}_{0}\mat{\Lambda}_{0}\otimes \mat{V}_{z,0}^{-1}$, \cite{Pet:81}) and the noise variance are scaled versions of the data-based estimates. A smaller $\mu$ implies a weaker prior that has a larger variance than the posterior, effectively down-weighting the prior's influence relative to the data.
+
+The sub-matrices of the decomposed prior $\mat{G}_{0}\mat{G}_{0}^{\top}$, given that $\tilde{\mat{V}}_{\bar{t}} = \tilde{\mat{G}}_{\bar{t}}\tilde{\mat{G}}_{\bar{t}}^{\top}$are
+\begin{eqnarray*}
+\nonumber
+\hspace*{-2.0ex}\mat{G}_{y,0} &=& \sqrt{\frac{\mu\Delta_{0}}{\bar{t} + (1-\mu)\Delta_{0}}}\tilde{\mat{G}}_{y,\bar{t}},\ \mat{G}_{zy,0} = \sqrt{\frac{\mu}{1-\mu}}\tilde{\mat{G}}_{zy,\bar{t}}\\
+%\label{e:priorGcalculations}
+&&\hspace*{-4.0ex}\mat{G}_{z,0}=\sqrt{\frac{\mu}{1-\mu}}\tilde{\mat{G}}_{z,\bar{t}}.
+\end{eqnarray*}
+They are not recalculated because the posterior values matter. 

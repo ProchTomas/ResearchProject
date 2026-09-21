@@ -1,0 +1,43 @@
+\begin{figure}[h!]
+    \centering
+\begin{tikzpicture}[
+    block/.style={rectangle, draw=textblue, fill=myblue, rounded corners,
+                  text width=2.5cm, minimum height=1.0cm, align=center, font=\sffamily\small},
+    line/.style={draw, -{Latex[length=3mm, width=2mm]}, thick, textblue},
+    textlabel/.style={pos=0.5, font=\sffamily\tiny, textblue},
+    every node/.style={text=textblue}
+]
+
+    % Define Nodes
+
+    % Nested Nodes (Algorithm and Market) - Using a scope for the bounding box
+    \begin{scope}[shift={(-3.5cm, 1cm)}]
+        \draw[draw=gray, fill=gray!5, minimum width=3.5cm, minimum height=3.5cm] (-1.75cm, -1.75cm) rectangle (1.75cm, 1.75cm);
+        \node (alg) [block, yshift=1cm] {algorithm};
+    \end{scope}
+
+    \node (metrics) [block, right=0.5cm of alg, yshift=-0.5cm] {metrics\\evaluation};
+    \node (opt2) [block, below=0.75cm of metrics] {optimize\\parameters};
+
+    % Define Nodes (Re-positioning nested nodes relative to others for connections)
+    \coordinate (alg_ref) at (-3.5cm, 1cm); % Reference coordinate for Algorithm
+    \coordinate (market_ref) at (-3.5cm, 0.75cm); % Reference coordinate for market
+
+    % Connections
+
+
+    % metrics -> Opt2 (feedback loop)
+    \draw [line] (metrics.south) -| (opt2.north) ; % This connection needs adjustment to match the drawing, but will work if you move opt2/metrics
+    % A cleaner way for the vertical connection:
+
+    % Opt1 -> Algorithm
+    \draw [line] (alg.north) -- ++(0, 0.75cm) -| (metrics.north);
+
+    \draw [line] (opt2.south) -- ++(0, -0.75cm) -| (alg.south);
+
+
+
+\end{tikzpicture}
+    \caption{PIPELINE visualization}
+    \label{fig:pipelinetikz2}
+\end{figure}

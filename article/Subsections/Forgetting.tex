@@ -1,0 +1,82 @@
+\subsection{Data-Based Optimal Forgetting} \label{s:forgetting}
+The ARX model in Sec.\ \ref{s:model} assumes constant $\mat{P}$, $\mat{\Sigma}$ and light-tails of the Gaussian distribution. These assumptions generally do not hold for real dynamic systems such as the financial markets.
+
+Forgetting irrelevant knowledge provides a simple, flexible way of estimating varying parameter values. An advanced method of the adaptive choice of these forgetting factors based on the minimum relative entropy principle is taken from \cite{Kar:25}, where details on properties of the involved optimisation are available. It is applied to our case in a novel and useful way. \bl{By construction, it can discard an outlying data record and revert to the prior statistic; Sec.~\ref{s:stress} verifies this on data with known parameters and shows that, with the prior used here, it does not track slow parameter drift.}
+
+Having a collection of possible relevant statistics $\big((\mat{V}_{1},\Delta_{1}),(\mat{V}_{2},\Delta_{2}),\ldots\big)$ that determine the handled posterior Gauss-inverse-Wishart PDFs, the optimal forgetting weights $\varphi = (\varphi_1, \varphi_2, \dots)$, which enter the weighted geometric mean of the combined PDFs $(p(\theta|\mat{V}_{j},\Delta_{j}))_{j\geq 1}$, are obtained by minimising the convex function of $\varphi$
+\begin{equation}
+    \label{e:Fdefinition}
+\hspace*{-1ex}F(\varphi) = D(\varphi||\varphi_{0}) - \ln\left[\int_{\Theta}\prod_{j\geq 1}p^{\varphi_{j}}(\theta|\mat{V}_{j}, \Delta_j)d\theta\right].
+\end{equation}
+$D(p||\bar{p})=\int p(\chi)\ln[p(\chi)/\bar{p}(\chi)]\mathrm{d}\chi$ is the Kullback-Leibler divergence (KLD, \cite{KulLei:51}), $\varphi_{0}$ is the prior belief into the relevance of combined PDFs. It is a guess of the optimised belief $\varphi$. The parameter $\theta=(\mat{P},\mat{\Sigma}^{-1})$ has the PDF,  see (\ref{e:PDFSigma}),
+\begin{equation}
+\nonumber
+p(\mat{P},\mat{\Sigma}^{-1}|\mat{V}_{j}, \Delta_{j}) = p(\mat{P}|\mat{V}_{j}, \Delta_{j}, \mat{\Sigma}^{-1})p(\mat{\Sigma}^{-1}|\mat{V}_{j}, \Delta_{j}).
+\end{equation}
+The optimal belief, acting as forgetting, is the minimiser
+\begin{equation*}
+\varphi^{\ast} \in \arg\min_{\varphi\in\Omega} F(\varphi),\quad \Omega= \left\{\varphi_{j} \geq 0, \sum_j\varphi_{j} = 1\right\}.
+\end{equation*}
+We combine the PDFs given by the sufficient statistics $(\mat{V}_{j},\Delta_{j})_{j=1}^{j=3}$ as those available at $t_{1} = t, t_{2} = t-1$, and $t_3 =\bar{t}<t$. The choice $t_{1}$, $t_{2}$ models the possible change of parameter values between time moments $t-1$ and $t$. The third term $t_{3} = \bar{t}$ admits that the current data record $(y_{t},z_{t})$ is such a big outlier that, for a stable estimation, we can only rely on the prior PDF given by the optimised $\mat{V}_{0}$, $\Delta_{0}$.
+
+The PDFs in the function (\ref{e:Fdefinition}) are weighted by factors $\varphi_{j}$. The PDF
+weighted by $\varphi_1 = \alpha$ is given to the updated statistic $(\mat{V}_{t},\Delta)$, the PDF given by  the old statistic $(\mat{V}_{t-1},\Delta_{t-1})$ gets the weight $\varphi_2 = \beta$ and the regularisation PDF, given by $(\mat{V}_{0},\Delta_{0})$, is weighted by $\varphi_3 = \gamma=(1-\alpha-\beta)$. For his choice, the function (\ref{e:Fdefinition}) reads, cf.\  (\ref{e:Vmatrix}) and (\ref{e:JARX}),
+\begin{eqnarray}
+\nonumber
+&&\hspace*{-4ex}F(\alpha,\beta,\gamma)=\alpha\ln[\alpha/\alpha_{0}]+\beta[\beta/\beta_{0}] + \gamma\ln[\gamma/\gamma_{0}]-\\
+\nonumber %\label{e:finalF}
+&&\hspace*{-7ex}\ln[J(\mat{V}_{t},\Delta_{t})]+\alpha\ln\bigg[J\Big(\mat{V}_{t-1}
++\begin{pmatrix}
+        y_{t}\\ z_{t}
+    \end{pmatrix}
+    \begin{pmatrix}
+        y_{t}^{\top} z_{t}^{\top}
+    \end{pmatrix}
+,\Delta_{t-1}+1\Big)\bigg]\\
+\nonumber
+&&\hspace*{-4ex}+\beta \ln[J(V_{t-1},\Delta_{t-1})]+\gamma\ln[J(V_{0},\Delta_{0})],\ \mbox{ with}\\
+\label{e:star}
+&&\hspace*{-4ex}\mat{V}_{t}=(\alpha+\beta)\mat{V}_{t-1}+\alpha\begin{pmatrix}
+        y_{t}\\ z_{t}
+    \end{pmatrix}
+    \begin{pmatrix}
+        y_{t}^{\top} z_{t}^{\top}
+    \end{pmatrix}   +\gamma \mat{V}_{0}\\
+\nonumber
+&&\hspace*{-8ex}\Delta_{t}=(\alpha+\beta)\Delta_{t-1}+\alpha+\gamma\Delta_{0}.
+\end{eqnarray}
+In the implementation, we can use the factorised matrices as $\mat{V}_{t}$ is a convex combination including the prior positive definite matrix, and thus is positive definite.
+
+ The definition of $(\mat{V}_{t},\Delta_{t})$ in (\ref{e:star}) has a neat interpretation. The old statistic should hold higher, or at least the same, weight as the new data dyad. If neither the updated statistic nor the old one is sufficiently relevant, we revert to the ``safe'' prior $\mat{V}_{0}$. It also serves as a regularisation, preventing a complete loss of knowledge.
+
+The update with simultaneous decomposition that gives (\ref{e:VdecompositiontoG}) is made by orthogonal transformations using the RQ algorithm (equivalent to the QR algorithm, \cite{GolLoa:12}). For the inspected $(\alpha,\beta,\gamma)$, it has the next form, which for the optimal values
+$(\alpha,\beta,\gamma)^{\ast}$
+ defines the new ``forgotten'' square root $\mat{G}_{t}$ of the extended information matrix
+\begin{eqnarray*}
+%\label{e:matrixGupdate}
+&&\hspace*{-5ex}\mat{G}_{t}\mat{G}_{t}^{\top}=(\alpha + \beta)\mat{G}_{t-1}\mat{G}_{t-1}^{\top} +
+\alpha\begin{pmatrix}y_{t}\\
+z_{t}\end{pmatrix}
+\begin{pmatrix}
+    y_{t}^{\top} z_{t}^{\top}
+\end{pmatrix} +\gamma\mat{G}_{0}\mat{G}_{0}^{\top}=\\
+\nonumber
+&&\hspace*{-5ex}
+\underbrace{
+\begin{pmatrix}
+    \sqrt{\alpha+\beta}\mat{G}_{t-1} \sqrt{\alpha}
+    \begin{pmatrix}y_{t}\\ z_{t}
+    \end{pmatrix}&
+     \sqrt{\gamma}\mat{G}_{0}
+\end{pmatrix}
+\mat{R}}_{\mat{G}_{t}}
+\underbrace{\mat{R}^{\top}
+\begin{pmatrix}
+    \sqrt{\alpha+\beta}\mat{G}_{t-1}^{\top}  \\
+    \sqrt{\alpha}
+    \begin{pmatrix}y_{t}^{\top}& z_{t}^{\top}
+    \end{pmatrix}
+    \\ \sqrt{\gamma}\mat{G}_{0}^{\top}
+ \end{pmatrix}}_{\mat{G}_{t}^{\top} }.
+ \end{eqnarray*}
+ $\mat{R}\mat{R}^{\top}  = \mat{I}$, i.e., $\mat{R}$ is a unitary matrix, and $\gamma = 1-\alpha-\beta$. The optimal values give $\Delta_{t}=(\alpha^{\ast}+\beta^{\ast})\Delta_{t-1}+\alpha^{\ast}+\gamma^{\ast}\Delta_{0}$. 

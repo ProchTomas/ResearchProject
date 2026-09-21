@@ -1,0 +1,40 @@
+\subsection{Structure Estimation} \label{s:SE}
+ The structure estimation is a crucial task in regression problems. It selects among
+$\rho$ available regressors, stored in vectors $\bar{z}_{t}$ and possibly containing $a_{t}$, those significant for predicting $y_{t}$.  Selecting appropriate regressors to $z_{t}$ is computationally hard as there are $2^{\rho}-1$ combinations of inclusion and exclusion of regressors from $\bar{z}_{t}$ into $z_{t}$.
+
+The comparison of the competitors is often based on Akaike's information criterion and its improvements, \cite{CavNea:19}. Their approximate nature limits their performance. Therefore, an efficient, ideally non-approximate, Bayesian structure estimator should be used. The chapter by \cite{KarKul:88} offers such a maximum a posteriori probability structure estimator.
+
+The maximised log-likelihood $\ln[l(u)]=\ln[J(\mat{V}_{t}(u),\Delta_{t})]-\ln[J(\mat{V}_{\bar{t}}(u),\Delta_{\bar{t}})]$, see (\ref{e:JARX}), acts on a vast, discrete set of ``mutations'' $\{u\}$ of indices of the inspected potential structures. The $\rho$-vector $u$ contains units at those positions
+of $\bar{z}_{t}$, which appear in the currently considered $z_{t}$ and zeros otherwise. For the ARX model, the log-likelihood on the structure mutations reads, see (\ref{e:returnsPDF}), (\ref{e:JARX})
+\begin{eqnarray}
+      \nonumber
+   &&\hspace*{-4ex}\ln[l(u)]=\\
+   \nonumber
+   &&
+   \sum_{j=1}^{N} \ln\bigg[\Gamma\scalebox{1}{$(\frac{\Delta_{t}-\rho_{u}+N+1-j}{2})$}\bigg] - \ln\bigg[\Gamma\scalebox{1}{$(\frac{\Delta_{\bar{t}}-\rho_{u}+N+1-j}{2})$}\bigg] \\
+    \nonumber
+    &&\hspace*{-4ex}-\scalebox{1}{$\frac{N}{2}(\ln|\mat{V}_{z,t}(u)|$}-\ln|\mat{V}_{z,\bar{t}}(u)|)-\scalebox{1}{$\frac{\Delta_{t}-\rho_{u} + N}{2}N\ln|\mat{\Lambda}_{t}(u)|$}\\
+    \label{e:loglikelihoodk}
+    &&\hspace*{-4ex} + \scalebox{1}{$\frac{\Delta_{\bar{t}}-\rho_{u} + N}{2}N\ln|\mat{\Lambda}_{\bar{t}}(u)|$}+constant,
+     \end{eqnarray}
+ where $\rho_{u}$ is the number of units in $u$, $\mat{V}_{z,t}(u)$. $\mat{V}_{z,\bar{t}}(u)$ are the matrices gained from $\mat{V}_{\bar{z},t}$ and
+ $\mat{V}_{\bar{z},\bar{t}}$ ($t>\bar{t}$, see Sec.\ \ref{s:prior})  by omitting rows and columns corresponding to zeros in $u$, respectively. $\mat{\Lambda}_{t}(u)=\mat{V}_{y,t}(u) - \mat{V}^{\top}_{zy,t}(u)\mat{V}^{-1}_{z,t}(u)\mat{V}_{zy,t}(u)$, where $\mat{V}_{y,t}(u)=\mat{V}_{y,t}$ and in $\mat{V}_{zy,t}(u)$ the zero-related rows from  $\mat{V}_{\bar{z}y,t}$ are omitted. $\mat{\Lambda}_{\bar{t}}(u)$ similarly arises from $\mat{V}_{\bar{t}}$.
+
+As said, the square root version of the extended information matrix (\ref{e:VdecompositiontoG}) makes the evaluation of determinants (\ref{e:loglikelihoodk}) computationally cheap for the triangular $\mat{G}$. The work \cite{KarKul:88} provides technical details on how to get the square roots of $\mat{V}_{t}(u),\mat{V}_{\bar{t}}(u)$ simply, from square roots of $\mat{V}_{t},\mat{V}_{\bar{t}}$ collected for the widest inclusion of regressors from $\bar{z}_{t}$ into $z_{t}$.
+
+For a realistic extent of potential regressors, the values of $\ln[l(u)]$ cannot be inspected completely, and they exhibit many local maxima. The work \cite{KarKul:88} performs local searches and finds the global maximum by their random restarts.
+
+Here, we use a genetic algorithm \cite{haldurai2016study} that operates on possible mutations and promotes exploration over exploitation by its setting.
+
+Genetic algorithms, broadly, implement the optimisation inspired by natural evolution. They initiate a population of candidates from $\{u\}$, evaluate their fitness, here given by $\ln[l(u)]$ (\ref{e:loglikelihoodk}), and iteratively improve the candidates according to their fitness.
+
+The adopted fitness selection procedure is called elitist selection, where the fittest candidate is simply the one that maximises the fitness function. Other methods, which emphasise exploration, would employ roulette wheel selection using softmax probabilities based on the fitness of the members in the given population.
+
+The implemented version creates a new population by mutating the parent vector $\{u\}$ and creating a batch of candidates. This is done by randomly flipping each bit in $\{u\}$ with probability $p_{mut}$.
+
+An offspring is created by crossing over two parents among the fittest population members, where the first $k$ bits are contributed by the first parent, and the remaining $\rho-k$ bits are taken from the second parent. The crossover point $k<\rho$ is randomly chosen with a uniform probability. This offspring is taken as a new parent $\{u\}$, from which a new population is created.
+
+At the end of each iteration, the mutation probability $p_{mut}$ is multiplied by a decay factor $\alpha_{decay} <1$. This ensures convergence to local maxima.
+
+Other variants are possible, e.g., a genetic algorithm may provide guesses initiating the algorithm in \cite{KarKul:88}, and $\ln[l(u)]$ could include a non-uniform prior probability on $\{u\}$ if offered by an expert. For instance, the presence of $a_{t}$ in $z_{t}$ is quite improbable for small investors.
+
