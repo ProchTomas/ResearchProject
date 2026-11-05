@@ -1,0 +1,25 @@
+\begin{table}[ht!]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrr@{}}
+\hline
+strategy & return & Sharpe & max DD & turn./day \\
+\hline
+Risk-Averse (RA) & 1.114 & 0.34 & -25.5\% & 14.9\% \\
+RA, legacy softmax solver & 1.257 & 0.63 & -27.4\% & 2.9\% \\
+Equal-weight, rebalanced & 1.273 & 0.66 & -27.1\% & 1.6\% \\
+Equal-weight, buy \& hold & 1.357 & 0.77 & -28.8\% & 0.0\% \\
+Inverse volatility (60d) & 1.198 & 0.55 & -26.4\% & 2.3\% \\
+Min-variance (120d) & 1.128 & 0.41 & -24.6\% & 2.8\% \\
+Min-variance (250d) & 1.181 & 0.56 & -23.0\% & 2.0\% \\
+Mean-variance (120d) & 1.277 & 0.47 & -41.6\% & 15.3\% \\
+Mean-variance (250d) & 1.567 & 0.69 & -39.8\% & 8.6\% \\
+Mean-var., cost-aware (120d) & 1.362 & 0.56 & -41.8\% & 1.1\% \\
+ARX-conditional mean-var. & 0.732 & -0.83 & -40.6\% & 43.6\% \\
+S\&P 500 (SPY) buy \& hold & 1.624 & 1.58 & -18.8\% & -- \\
+\hline
+\end{tabular}
+\caption{Benchmark comparison on the 500 test days 2023-11-03 to 2025-10-31: total return, annualised Sharpe ratio, maximum drawdown and mean daily turnover, averaged over the 200 portfolios, all strategies on the same portfolios and days with a $0.2\%$ proportional transaction cost. The annualised return and volatility, the Calmar ratio, the total cost paid and the medians over the portfolios are in Sec.~S3 of the complementary material.}
+\label{tab:bench_mean}
+\end{table}
