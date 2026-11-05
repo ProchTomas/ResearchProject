@@ -40,15 +40,9 @@
             postcode={182 00},
            country={Czech Republic}}
 
-\begin{abstract} Web of Science reports more than eighteen thousand items concerning portfolio optimisation, and Google Scholar reports more than three and a half million. It indicates the topic's importance and provokes the question of
-whether it makes sense to add a new item to this pile.
-The paper positively answers it by offering:\\
-$\checkmark$  Bayesian learning of an autoregressive model with exogenous variables
-that: $\bullet$ optimally chooses the conjugate prior probability density function of unknown parameters; $\bullet$ \bl{estimates the model structure by a genetic search over an exact Bayesian criterion}; $\bullet$ tracks the parameter changes via an optimised data-based forgetting, which robustifies \bl{estimation against outlying observations}; $\bullet$  employs a safe updating of a sufficient statistic;\\
-$\checkmark$  Use of the autoregressive model for expected multi-step quadratic-loss design of the decision policy that:
-$\bullet$ relies on numerically safe, feasible square root optimisation with receding-horizon design; $\bullet$ elicits optimal weights in quadratic loss, exploiting the fully probabilistic design of the decision policy that guarantees proper handling of risks in a non-traditional but consistent way; $\bullet$ opens a way to off-line design with Thompson's sampling of parameters, which leads to a reliable prediction of the quality of the obtained policy.
+\begin{abstract} Web of Science reports more than eighteen thousand items concerning portfolio optimisation, which indicates the topic's importance and provokes the question of whether it makes sense to add a new item to this pile. The paper positively answers it by a single complete design. Bayesian learning of an autoregressive model with exogenous variables optimally chooses the conjugate prior probability density function of the unknown parameters, \bl{estimates the model structure by a genetic search over an exact Bayesian criterion}, tracks the parameter changes via an optimised data-based forgetting, which robustifies \bl{the estimation against outlying observations}, and updates the sufficient statistic safely. The learnt model then serves an expected multi-step quadratic-loss design of the decision policy, which relies on a numerically safe, feasible square-root optimisation with a receding horizon, elicits the weights of the quadratic loss by exploiting the fully probabilistic design, which handles the risks in a non-traditional but consistent way, and opens a way to an off-line design with Thompson's sampling of the parameters.
 
-\bl{The solution is complete in the sense that every step, from the choice of the prior to the constrained design, is derived within a single framework.} Our solution can also be applied to many other decision-making problems. \bl{Practically, the number of hyperparameters is small, and the experiments identify the two that matter. A paired comparison on 200 random portfolios and four market windows against standard benchmarks (equal-weight, minimum-variance, mean-variance, the S\&P~500), an ablation of every component, a sensitivity study, and stress tests on synthetic data with known parameters are reported with the released code. The policy has consistently smaller drawdowns than mean-variance allocation and its adaptive forgetting rejects outlying observations as designed; it does not outperform the equal-weight portfolio after transaction costs, and the experiments locate the reason in the elicitation of the risk weight and in the strength of the optimal prior.}
+\bl{The solution is complete in the sense that every step, from the choice of the prior to the constrained design, is derived within a single framework;} it can also be applied to many other decision-making problems. \bl{A paired comparison on 200 random portfolios and four market windows against equal-weight, minimum-variance and mean-variance allocations and the S\&P~500, an ablation of every component and stress tests on synthetic data with known parameters are reported with the released code. The policy has consistently smaller drawdowns than mean-variance allocation and its adaptive forgetting rejects outlying observations as designed; it does not outperform the equal-weight portfolio after transaction costs, and the experiments locate the reason in the elicitation of the risk weight and in the strength of the optimal prior.}
 \end{abstract}
 
 \maketitle
@@ -88,6 +82,7 @@ The authors have no known competing financial interests or personal relationship
 \label{s:software} \bl{Public data were used only. The complete code, the data preparation and the scripts that regenerate every table and figure of Sec.~\ref{s:experiments} are available at \url{https://github.com/ProchTomas/ResearchProject}.}
 
 \begin{thebibliography}{10}
+\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
 \expandafter\ifx\csname url\endcsname\relax
   \def\url#1{\texttt{#1}}\fi
 \expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
@@ -204,7 +199,7 @@ G.~Bretthorst, An Introduction to Parameter Estimation Using {B}ayesian
   Probability Theory, Springer Netherlands, Dordrecht, 1990, pp. 53--79.
 
 \bibitem{Pro:26}
-T.~Proch\'{a}zka, Adaptive portfolio optimization, draft of master thesis,
+T.~Proch\'{a}zka, Adaptive portfolio optimization, Master's thesis,
   FNSPE, CTU, Prague (2026).
 
 \bibitem{Zel:76}
