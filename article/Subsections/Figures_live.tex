@@ -1,0 +1,27 @@
+\begin{figure}[ht!]\centering
+\includegraphics[width=\columnwidth]{Images/selected_corr_matrix.png}
+\caption{Correlation matrix of the 20 selected stocks of the universe of Sec.~\ref{sm:data}.}
+\label{fig:corr_matrix}
+\end{figure}
+
+\begin{figure}[ht!]\centering
+\includegraphics[width=\columnwidth]{Images/live_returns.png}
+\caption{Returns in the live test: Risk Averse against the ideal uniform portfolio and the S\&P~500 index.}
+\label{fig:cum_wealth_live}
+\end{figure}
+
+\begin{table}[ht!]
+\centering
+\footnotesize
+\begin{tabular}{lrrr}
+\hline
+& RA & uniform & S\&P~500 \\
+\hline
+total return & 1.023 & 1.056 & 1.022 \\
+max drawdown & $-0.108$ & $-0.099$ & $-0.077$ \\
+Sharpe ratio & 0.074 & 0.133 & 0.069 \\
+\hline
+\end{tabular}
+\caption{Live trading metrics, 1 March to 15 April 2026, one portfolio, 32 trading days.}
+\label{tab:live_metrics}
+\end{table}

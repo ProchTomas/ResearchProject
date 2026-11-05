@@ -1,5 +1,5 @@
-\subsection{\blt{End-to-End Algorithm}} \label{s:algorithm}
-Algorithm~1 (Fig.~\ref{alg:pipeline}) summarises the complete procedure as implemented in the released code (function \texttt{bench.policy.run\_policy}). Table~\ref{tab:hyper} lists every user-set quantity.
+\subsection{\blt{End-to-End Algorithm}} \label{s:algorithm}\label{s:runtime}
+Algorithm~1 (Fig.~\ref{alg:pipeline}) summarises the complete procedure as implemented in the released code; Table~\ref{tab:hyper} lists every user-set quantity. One portfolio costs, on a single core and without compiled code, $2.6$\,s for the prior and the 500-iteration genetic algorithm over $2^{137}$ structures, which keeps 57 of 137 regressors on average, and $0.1$\,s per trading day of the online loop. The whole study of this section, about 3000 portfolio-years, ran in under two hours on 20 cores.
 
 \begin{figure}[ht!]
 \begin{minipage}{\columnwidth}
