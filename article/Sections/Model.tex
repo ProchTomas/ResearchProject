@@ -1,5 +1,5 @@
 \section{Complete Learning of the Returns Model} \label{s:model}
-A multivariate autoregressive model with exogenous variables serves well for predicting market returns $y_{t}$.  This is a simple yet powerful common model.  It allows for an efficient Bayesian parameter estimation and gives the returns' predictor. The ARX model reads
+A multivariate autoregressive model with exogenous variables serves well for predicting market returns $y_{t}$: it is simple, it allows an efficient Bayesian parameter estimation and it gives the returns' predictor. The ARX model reads
 \begin{equation}\label{e:linearmodel}
     y_{t} = \mat{P}^{\top}z_{t} + e_{t},\ z^{\top}_{t}=[a^{\top}_{t},x^{\top}_{t-1}] \quad e_{t} \sim \mathcal{N}(0, \mat{\Sigma}),
 \end{equation}
